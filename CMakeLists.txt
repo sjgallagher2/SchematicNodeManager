@@ -15,8 +15,16 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 add_executable(NodeManager
   main.cpp
   coordinate2.h
+  schematic.h schematic.cpp
+  simplegraph.h simplegraph.cpp
 )
 target_link_libraries(NodeManager PRIVATE Qt${QT_VERSION_MAJOR}::Core)
+
+add_library(NodeManagerCore
+  coordinate2.h
+  schematic.h schematic.cpp
+  simplegraph.h simplegraph.cpp
+)
 
 include(GNUInstallDirs)
 install(TARGETS NodeManager

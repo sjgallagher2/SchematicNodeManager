@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Coordinate2Test LANGUAGES CXX)
+project(NodeManagerTest LANGUAGES CXX)
 
 enable_testing()
 
@@ -26,10 +26,13 @@ include_directories(
     ${_GTEST_BASE}/googletest ${_GTEST_BASE}/googletest/include
     ${_GTEST_BASE}/googlemock ${_GTEST_BASE}/googlemock/include
 )
-add_executable(Coordinate2Test main.cpp tst_coordinate2test.cpp
+add_executable(NodeManagerTest main.cpp tst_coordinate2test.cpp
                ${_GTEST_BASE}/googletest/src/gtest-all.cc
                ${_GTEST_BASE}/googlemock/src/gmock-all.cc
+               tst_schematictest.cpp
+               tst_simplegraph.cpp
            )
 
-add_test(NAME Coordinate2Test COMMAND Coordinate2Test)
-target_link_libraries(Coordinate2Test PRIVATE Threads::Threads)
+add_test(NAME NodeManagerTest COMMAND NodeManagerTest)
+target_link_libraries(NodeManagerTest PRIVATE Threads::Threads)
+target_link_libraries(NodeManagerTest PRIVATE NodeManagerCore)

@@ -3,7 +3,7 @@
 
 #include <cmath>
 #include <iostream>
-// #include <vector>
+#include <vector>
 #include <stdexcept>
 
 const double pi = 3.14159265358979;
@@ -12,8 +12,8 @@ const double pi = 3.14159265358979;
 class Coordinate2
 {
 public:
-    Coordinate2() : x{0},y{0} { }
-    Coordinate2(double x_in,double y_in) :x{x_in},y{y_in} { }
+    Coordinate2() : x{0},y{0},_prec{1e-10} { }
+    Coordinate2(double x_in,double y_in) :x{x_in},y{y_in},_prec{1e-10} { }
     Coordinate2(const Coordinate2& c) = default; // Default memberwise copy constructor
     Coordinate2& operator=(const Coordinate2& c) = default; // Default memberwise assignment
 
