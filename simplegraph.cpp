@@ -164,6 +164,48 @@ const vector<int>& SimpleGraph::get_reachable_vertices(int id)
     return adjacent[id];
 }
 
+void SimpleGraph::traverse_graph()
+{
+    /*
+     * Depth-first search graph traversal.
+     * Each vertex is visited if it hasn't been visited already.
+     * For each vertex visited, visit each of its adjacent vertices.
+     * If no more vertices, go back to predecessor.
+     */
+
+
+    // To do this, start with an empty `visited` vector, and an int:int map
+    // for id:dfs_id. Initialize the map values for each id to all zeros.
+    // Keep a value `dfs_id` which will be incremented for each visited vertex.
+    // To start the traversal, take the first vertex. Mark it as visited and
+    // assign its dfs_id, then increment dfs_id.
+    // To continue the traversal:
+    //   - If:  there are no adjacent vertices, continue to next by moving linearly
+    //     through the list of vertices and checking for unvisited nodes
+    //   - Else if there are adjacent vertices, check for any that are unvisited.
+    //   --- If none are unvisited, check for a parent and pop
+    //   ------- If no parent, continue traversal
+    //
+
+    vector<int> visited;  // Empty vector, visited vertices are pushed back
+    map<int,int> vert_dfs_ids;  // ids for depth-first search, default to 0
+    vector<int> parents;  // Stack for parent ids
+
+    // Now for efficiency, make a map from id to Vertex iterator (iterators will stay
+    // valid since we're not changing the tree)
+    vector<int> all_ids = get_vertex_ids();
+    map<int,vector<Vertex>::const_iterator> vertex_lookup;
+
+    for(auto& id : all_ids) vert_dfs_ids[id] = 0;
+    for(auto vitr = vertices.begin(); vitr != vertices.end(); ++vitr)
+    {
+        vertex_lookup[vitr->get_id()] = vitr;
+    }
+    int dfs_id = 1;  // static id to be assigned, incremented after each visit
+
+
+}
+
 bool SimpleGraph::_has_id(int id)
 {
     for(auto& other : vertices)

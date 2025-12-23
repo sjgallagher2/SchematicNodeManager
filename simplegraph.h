@@ -54,6 +54,7 @@ public:
     bool is_vertex_isolated(int);
     const vector<int>& get_reachable_vertices(int);
     int find_vertex(Coordinate2 p);
+    void traverse_graph();    // Depth-first search
 
 private:
     vector<Vertex> vertices;  // Vertex index in vector

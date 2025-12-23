@@ -163,3 +163,8 @@ TEST_F(SimpleGraphTestFixtureWithVertices, SimpleGraphDeleteVerticesWorks)
     EXPECT_THROW(graph.disconnect_vertices(id4,id6),std::invalid_argument);
 }
 
+TEST_F(SimpleGraphTestFixtureWithVertices, SimpleGraphTraverseGraphExample)
+{
+    graph.traverse_graph();
+}
+
