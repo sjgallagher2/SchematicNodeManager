@@ -11,6 +11,8 @@ if ($ENV{GOOGLETEST_DIR})
     get_filename_component(_GTEST_BASE $ENV{GOOGLETEST_DIR} REALPATH)
 elseif (EXISTS "C:/Users/SG1295/OneDrive - CommScope/Documents/2. devel/googletest-main") # set by QC
     get_filename_component(_GTEST_BASE "C:/Users/SG1295/OneDrive - CommScope/Documents/2. devel/googletest-main" REALPATH) # set by QC
+elseif (UNIX AND EXISTS "/home/sam/devel/testframeworks/googletest-1.17.0/") # set by QC
+    get_filename_component(_GTEST_BASE "/home/sam/devel/testframeworks/googletest-1.17.0/" REALPATH) # set by me
 elseif (UNIX AND EXISTS "/usr/src/gtest")
     set(_GTEST_BASE "/usr/src/gtest")
 endif()
