@@ -14,6 +14,44 @@ using std::vector;
 using std::map;
 using std::pair;
 
+/* For testing only  */
+#include <iostream>
+#include <string>
+using std::cout;
+using std::endl;
+using std::string;
+template <typename T>
+void print_Vec(const string&& name, const Vec<T>& v)
+{
+    if(v.size() == 0) cout << name << " = []\n";
+    else
+    {
+        cout << name << " = [";
+        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
+        cout << v.back() << "]\n";
+    }
+}
+template<typename T,typename V>
+void print_map(const string&& name, const map<T,V> mm)
+{
+    if(mm.size() == 0) cout << name << " = []\n";
+    else
+    {
+        cout << std::boolalpha;
+        cout << name << " = [\n";
+        for(auto const& pair : mm)
+        {
+            cout << "\t" << pair.first << " : " << pair.second << endl;
+        }
+        cout << std::noboolalpha;
+    }
+}
+/* /For testing only  */
+
+
+
+
+
 class SimpleGraphTestFixture : public Test
 {
 protected:
@@ -21,61 +59,63 @@ protected:
     // Default constructor
 };
 
-class SimpleVertexGraphTestFixture : public Test
+class VertexGraphTestFixture : public Test
 {
 protected:
-    SimpleVertexGraph graph;
+    VertexGraph graph;
 };
 
-class SimpleGraphTestFixtureWithVertices : public Test
+class SimpleGraphTestFixtureWithNodes : public Test
 {
 protected:
     SimpleGraph graph;
-    SimpleGraphTestFixtureWithVertices() {
-        id0 = graph.add_node(false);
-        id1 = graph.add_node(false);
-        id2 = graph.add_node(false);
-        id3 = graph.add_node(false);
-        id4 = graph.add_node(false);
-        id5 = graph.add_node(false);
-        id6 = graph.add_node(false);
-        id7 = graph.add_node(false);
+    SimpleGraphTestFixtureWithNodes() {
+        id0 = graph.add(false);
+        id1 = graph.add(false);
+        id2 = graph.add(false);
+        id3 = graph.add(false);
+        id4 = graph.add(false);
+        id5 = graph.add(false);
+        id6 = graph.add(false);
+        id7 = graph.add(false);
 
-        graph.connect_nodes(id1,id3,false);
-        graph.connect_nodes(id2,id3,false);
-        graph.connect_nodes(id3,id4,false);
-        graph.connect_nodes(id4,id5,false);
-        graph.connect_nodes(id4,id6,false);
-        graph.connect_nodes(id4,id7,false);
-        graph.connect_nodes(id6,id7,true);  // with traversal
+        graph.connect(id1,id3,false);
+        graph.connect(id2,id3,false);
+        graph.connect(id3,id4,false);
+        graph.connect(id4,id5,false);
+        graph.connect(id4,id6,false);
+        graph.connect(id4,id7,false);
+        graph.connect(id6,id7,true);  // with traversal
     }
     int id0,id1,id2,id3,id4,id5,id6,id7;
 };
 
 
-class SimpleVertexGraphTestFixtureWithVertices : public Test
+class VertexGraphTestFixtureWithVertices : public Test
 {
 protected:
-    SimpleVertexGraph graph;
-    SimpleVertexGraphTestFixtureWithVertices() {
-        id0 = graph.add_vertex({-1,0},false);
-        id1 = graph.add_vertex({0,0},false);
-        id2 = graph.add_vertex({1,0},false);
-        id3 = graph.add_vertex({2,0},false);
-        id4 = graph.add_vertex({3,0},false);
-        id5 = graph.add_vertex({4,0},false);
-        id6 = graph.add_vertex({5,0},false);
-        id7 = graph.add_vertex({6,0},false);
+    VertexGraph graph;
+    VertexGraphTestFixtureWithVertices() {
+        id0 = graph.add({ 0, 0},false);
+        id1 = graph.add({ 2, 1},false);
+        id2 = graph.add({ 6, 2},false);
+        id3 = graph.add({ 7,-1},false);
+        id4 = graph.add({ 2,-2},false);
+        id5 = graph.add({ 0,-4},false);
+        id6 = graph.add({-4,-5},false);
+        id7 = graph.add({-1,-6},false);
+        id8 = graph.add({ 2,-6},false);
 
-        graph.connect_nodes(id1,id3,false);
-        graph.connect_nodes(id2,id3,false);
-        graph.connect_nodes(id3,id4,false);
-        graph.connect_nodes(id4,id5,false);
-        graph.connect_nodes(id4,id6,false);
-        graph.connect_nodes(id4,id7,false);
-        graph.connect_nodes(id6,id7,true);  // with traversal
+        graph.connect(id1,id2,false);
+        graph.connect(id1,id4,false);
+        graph.connect(id2,id3,false);
+        graph.connect(id3,id4,false);
+        graph.connect(id4,id5,false);
+        graph.connect(id5,id6,false);
+        graph.connect(id5,id7,false);
+        graph.connect(id5,id8,true);
     }
-    int id0,id1,id2,id3,id4,id5,id6,id7;
+    int id0,id1,id2,id3,id4,id5,id6,id7,id8;
 };
 
 
@@ -96,180 +136,257 @@ TEST(GraphIdPoolSuite, TestGraphIdPoolFunctionality)
 
 TEST_F(SimpleGraphTestFixture, SimpleGraphAddNodeWorks)
 {
-    int id = graph.add_node();
+    int id = graph.add();
     EXPECT_EQ(0,id);
-    id = graph.add_node();
+    id = graph.add();
     EXPECT_EQ(1,id);
-    id = graph.add_node();
+    id = graph.add();
     EXPECT_EQ(2,id);
-    vector<int> adj_vtxs = graph.get_reachable_nodes(id);
+    vector<int> adj_vtxs = graph.get_reachable(id);
     EXPECT_THAT(adj_vtxs,ElementsAre(id));
 }
 
-TEST_F(SimpleVertexGraphTestFixture, SimpleVertexGraphAddVertexWorks)
+TEST_F(VertexGraphTestFixture, SimpleVertexGraphAddVertexWorks)
 {
-    int id = graph.add_vertex(Coordinate2(0,0));
+    int id = graph.add(Coordinate2(0,0));
     EXPECT_EQ(0,id);
-    id = graph.add_vertex(Coordinate2(0,0));
+    id = graph.add(Coordinate2(0,0));
     EXPECT_EQ(0,id);  // Doesn't add anything
-    id = graph.add_vertex(Coordinate2(0,5));
+    id = graph.add(Coordinate2(0,5));
     EXPECT_EQ(1,id);
-    vector<int> adj_vtxs = graph.get_reachable_nodes(id);
+    vector<int> adj_vtxs = graph.get_reachable(id);
     EXPECT_THAT(adj_vtxs,ElementsAre(id));
 }
 
 TEST_F(SimpleGraphTestFixture, SimpleGraphInitializesTwoVerticesCorrectly)
 {
     // Can we construct nodes
-    int id1 = graph.add_node();
-    int id2 = graph.add_node();
+    int id1 = graph.add();
+    int id2 = graph.add();
 
     /* Were the vertices added properly */
     // Are these vertices connected (they should not be)
     // Throw invalid_argument if either id does not exist
-    EXPECT_THROW(graph.are_nodes_adjacent(99,0),std::invalid_argument);
-    EXPECT_THROW(graph.are_nodes_adjacent(0,99),std::invalid_argument);
-    EXPECT_FALSE(graph.are_nodes_adjacent(id1,id2));
+    EXPECT_THROW(graph.adjacent(99,0),std::invalid_argument);
+    EXPECT_THROW(graph.adjacent(0,99),std::invalid_argument);
+    EXPECT_FALSE(graph.adjacent(id1,id2));
     // Are these vertices both isolated (they should be)
-    EXPECT_TRUE(graph.is_node_isolated(id1));
-    EXPECT_TRUE(graph.is_node_isolated(id2));
+    EXPECT_TRUE(graph.isolated(id1));
+    EXPECT_TRUE(graph.isolated(id2));
     // Calling is_vertex_isolated on a non-existent vertex (should fail with invalid_argument)
-    EXPECT_THROW(graph.is_node_isolated(99),std::invalid_argument);
+    EXPECT_THROW(graph.isolated(99),std::invalid_argument);
     // Are these the only vertex id's listed (they should be)
-    vector<int> vids = graph.get_all_node_ids();
+    vector<int> vids = graph.get_all_ids();
     EXPECT_THAT(vids,ElementsAre(id1,id2));
 }
 
-TEST_F(SimpleVertexGraphTestFixture, SimpleVertexGraphInitializesTwoVerticesCorrectly)
+TEST_F(VertexGraphTestFixture, SimpleVertexGraphInitializesTwoVerticesCorrectly)
 {
     // Can we construct vertices
     Coordinate2 p1(0,0);
     Coordinate2 p2(0,5);
-    int id1 = graph.add_vertex(p1);
-    int id2 = graph.add_vertex(p2);
+    int id1 = graph.add(p1);
+    int id2 = graph.add(p2);
 
     /* Were the vertices added properly */
     // Are these vertices connected (they should not be)
     // Throw invalid_argument if either id does not exist
-    EXPECT_THROW(graph.are_nodes_adjacent(99,0),std::invalid_argument);
-    EXPECT_THROW(graph.are_nodes_adjacent(0,99),std::invalid_argument);
-    EXPECT_FALSE(graph.are_nodes_adjacent(id1,id2));
+    EXPECT_THROW(graph.adjacent(99,0),std::invalid_argument);
+    EXPECT_THROW(graph.adjacent(0,99),std::invalid_argument);
+    EXPECT_FALSE(graph.adjacent(id1,id2));
     // Are these vertices both isolated (they should be)
-    EXPECT_TRUE(graph.is_node_isolated(id1));
-    EXPECT_TRUE(graph.is_node_isolated(id2));
+    EXPECT_TRUE(graph.isolated(id1));
+    EXPECT_TRUE(graph.isolated(id2));
     // Calling is_vertex_isolated on a non-existent vertex (should fail with invalid_argument)
-    EXPECT_THROW(graph.is_node_isolated(99),std::invalid_argument);
+    EXPECT_THROW(graph.isolated(99),std::invalid_argument);
     // Are these the only vertex id's listed (they should be)
-    vector<int> vids = graph.get_all_node_ids();
+    vector<int> vids = graph.get_all_ids();
     EXPECT_THAT(vids,ElementsAre(id1,id2));
 }
 
 TEST_F(SimpleGraphTestFixture, SimpleGraphConnectTwoVerticesWorks)
 {
-    int id1 = graph.add_node();
-    int id2 = graph.add_node();
+    int id1 = graph.add();
+    int id2 = graph.add();
 
     /* Testing connections */
     // Can we connect to a non-existent vertex (should fail with invalid_argument)
-    EXPECT_THROW(graph.connect_nodes(id1,99),std::invalid_argument);
-    EXPECT_THROW(graph.connect_nodes(99,id1),std::invalid_argument);
+    EXPECT_THROW(graph.connect(id1,99),std::invalid_argument);
+    EXPECT_THROW(graph.connect(99,id1),std::invalid_argument);
     // Can we connect two existing vertices (they should become connected)
-    graph.connect_nodes(id1,id2);
-    EXPECT_TRUE(graph.are_nodes_adjacent(id1,id2));
-    EXPECT_TRUE(graph.are_nodes_adjacent(id2,id1));
+    graph.connect(id1,id2);
+    EXPECT_TRUE(graph.adjacent(id1,id2));
+    EXPECT_TRUE(graph.adjacent(id2,id1));
     // Are these vertices both isolated (they should not be anymore)
-    EXPECT_FALSE(graph.is_node_isolated(id1));
-    EXPECT_FALSE(graph.is_node_isolated(id2));
+    EXPECT_FALSE(graph.isolated(id1));
+    EXPECT_FALSE(graph.isolated(id2));
     // Is it safe to call connect_vertices() twice (it should be)
-    graph.connect_nodes(id2,id1);
-    EXPECT_TRUE(graph.are_nodes_adjacent(id1,id2));
-    EXPECT_TRUE(graph.are_nodes_adjacent(id2,id1));
+    graph.connect(id2,id1);
+    EXPECT_TRUE(graph.adjacent(id1,id2));
+    EXPECT_TRUE(graph.adjacent(id2,id1));
     // Can we call connect_vertices() with the same vertex (should fail with invalid_argument)
-    EXPECT_THROW(graph.connect_nodes(id1,id1),std::invalid_argument);
-    EXPECT_THROW(graph.connect_nodes(id2,id2),std::invalid_argument);
+    EXPECT_THROW(graph.connect(id1,id1),std::invalid_argument);
+    EXPECT_THROW(graph.connect(id2,id2),std::invalid_argument);
 }
 
 TEST_F(SimpleGraphTestFixture, SimpleGraphDisconnectVerticesWorks)
 {
-    int id1 = graph.add_node();
-    int id2 = graph.add_node();
-    graph.connect_nodes(id1,id2);
+    int id1 = graph.add();
+    int id2 = graph.add();
+    graph.connect(id1,id2);
 
     /* Testing disconnections */
     // Can we disconnect a non-existent vertex (should fail with invalid_argument)
-    EXPECT_THROW(graph.disconnect_nodes(id1,99),std::invalid_argument);
-    EXPECT_THROW(graph.disconnect_nodes(99,id1),std::invalid_argument);
+    EXPECT_THROW(graph.disconnect(id1,99),std::invalid_argument);
+    EXPECT_THROW(graph.disconnect(99,id1),std::invalid_argument);
     // Are these vertices both isolated (they should not be)
-    EXPECT_FALSE(graph.is_node_isolated(id1));
-    EXPECT_FALSE(graph.is_node_isolated(id2));
+    EXPECT_FALSE(graph.isolated(id1));
+    EXPECT_FALSE(graph.isolated(id2));
     // Can we disconnect two existing vertices (they should become isolated)
-    graph.disconnect_nodes(id1,id2);
-    EXPECT_FALSE(graph.are_nodes_adjacent(id1,id2));
-    EXPECT_FALSE(graph.are_nodes_adjacent(id2,id1));
-    EXPECT_TRUE(graph.is_node_isolated(id1));
-    EXPECT_TRUE(graph.is_node_isolated(id2));
+    graph.disconnect(id1,id2);
+    EXPECT_FALSE(graph.adjacent(id1,id2));
+    EXPECT_FALSE(graph.adjacent(id2,id1));
+    EXPECT_TRUE(graph.isolated(id1));
+    EXPECT_TRUE(graph.isolated(id2));
     // Is it safe to call disconnect_vertices() on disconnected vertices  (it should be)
-    graph.disconnect_nodes(id2,id1);
-    EXPECT_FALSE(graph.are_nodes_adjacent(id1,id2));
-    EXPECT_FALSE(graph.are_nodes_adjacent(id2,id1));
+    graph.disconnect(id2,id1);
+    EXPECT_FALSE(graph.adjacent(id1,id2));
+    EXPECT_FALSE(graph.adjacent(id2,id1));
     // Can we call disconnect_vertices() with the same vertex (should do nothing)
-    EXPECT_NO_THROW(graph.disconnect_nodes(id1,id1));
-    EXPECT_NO_THROW(graph.disconnect_nodes(id2,id2));
+    EXPECT_NO_THROW(graph.disconnect(id1,id1));
+    EXPECT_NO_THROW(graph.disconnect(id2,id2));
 }
 
-TEST_F(SimpleGraphTestFixtureWithVertices, SimpleGraphDeleteVerticesWorks)
+TEST_F(SimpleGraphTestFixtureWithNodes, SimpleGraphDeleteVerticesWorks)
 {
     // Verify some connections
-    EXPECT_FALSE(graph.is_node_isolated(id5));
-    EXPECT_TRUE(graph.are_nodes_adjacent(id6,id7));
-    EXPECT_TRUE(graph.are_nodes_adjacent(id1,id3));
-    EXPECT_TRUE(graph.are_nodes_adjacent(id2,id3));
+    EXPECT_FALSE(graph.isolated(id5));
+    EXPECT_TRUE(graph.adjacent(id6,id7));
+    EXPECT_TRUE(graph.adjacent(id1,id3));
+    EXPECT_TRUE(graph.adjacent(id2,id3));
 
     // Delete 4, then 5 becomes isolated, 6 and 7 are connected, 1, 3, and 2 are connected
-    graph.delete_node(id4);
-    EXPECT_TRUE(graph.is_node_isolated(id5));
-    EXPECT_TRUE(graph.are_nodes_adjacent(id6,id7));
-    EXPECT_TRUE(graph.are_nodes_adjacent(id1,id3));
-    EXPECT_TRUE(graph.are_nodes_adjacent(id2,id3));
+    graph.erase(id4);
+    EXPECT_TRUE(graph.isolated(id5));
+    EXPECT_TRUE(graph.adjacent(id6,id7));
+    EXPECT_TRUE(graph.adjacent(id1,id3));
+    EXPECT_TRUE(graph.adjacent(id2,id3));
 
     // Try to access a non-existent vertex
-    EXPECT_THROW(graph.delete_node(id4),std::invalid_argument);
-    EXPECT_THROW(graph.connect_nodes(id1,id4),std::invalid_argument);
-    EXPECT_THROW(graph.disconnect_nodes(id4,id6),std::invalid_argument);
+    EXPECT_THROW(graph.erase(id4),std::invalid_argument);
+    EXPECT_THROW(graph.connect(id1,id4),std::invalid_argument);
+    EXPECT_THROW(graph.disconnect(id4,id6),std::invalid_argument);
 }
 
-TEST_F(SimpleGraphTestFixtureWithVertices, SimpleGraphTraversalAndReachableVerticesWorks)
+TEST_F(SimpleGraphTestFixtureWithNodes, SimpleGraphTraversalAndReachableVerticesWorks)
 {
-    EXPECT_FALSE(graph.are_nodes_reachable(id0,id1));
-    EXPECT_FALSE(graph.are_nodes_reachable(id0,id2));
-    EXPECT_FALSE(graph.are_nodes_reachable(id0,id3));
-    EXPECT_FALSE(graph.are_nodes_reachable(id0,id4));
-    EXPECT_FALSE(graph.are_nodes_reachable(id0,id5));
-    EXPECT_FALSE(graph.are_nodes_reachable(id0,id6));
-    EXPECT_FALSE(graph.are_nodes_reachable(id0,id7));
-    EXPECT_TRUE(graph.are_nodes_reachable(id1,id2));
-    EXPECT_TRUE(graph.are_nodes_reachable(id1,id3));
-    EXPECT_TRUE(graph.are_nodes_reachable(id1,id4));
-    EXPECT_TRUE(graph.are_nodes_reachable(id1,id5));
-    EXPECT_TRUE(graph.are_nodes_reachable(id1,id6));
-    EXPECT_TRUE(graph.are_nodes_reachable(id1,id7));
+    EXPECT_FALSE(graph.reachable(id0,id1));
+    EXPECT_FALSE(graph.reachable(id0,id2));
+    EXPECT_FALSE(graph.reachable(id0,id3));
+    EXPECT_FALSE(graph.reachable(id0,id4));
+    EXPECT_FALSE(graph.reachable(id0,id5));
+    EXPECT_FALSE(graph.reachable(id0,id6));
+    EXPECT_FALSE(graph.reachable(id0,id7));
+    EXPECT_TRUE(graph.reachable(id1,id2));
+    EXPECT_TRUE(graph.reachable(id1,id3));
+    EXPECT_TRUE(graph.reachable(id1,id4));
+    EXPECT_TRUE(graph.reachable(id1,id5));
+    EXPECT_TRUE(graph.reachable(id1,id6));
+    EXPECT_TRUE(graph.reachable(id1,id7));
 
-    graph.delete_node(id4);
-    EXPECT_TRUE(graph.is_node_isolated(id5));
-    EXPECT_FALSE(graph.are_nodes_reachable(id0,id1));
-    EXPECT_TRUE(graph.are_nodes_reachable(id1,id2));
-    EXPECT_TRUE(graph.are_nodes_reachable(id1,id3));
-    EXPECT_FALSE(graph.are_nodes_reachable(id1,id7));
-    EXPECT_FALSE(graph.are_nodes_reachable(id2,id7));
-    EXPECT_FALSE(graph.are_nodes_reachable(id3,id7));
-    EXPECT_FALSE(graph.are_nodes_reachable(id5,id7));
-    EXPECT_FALSE(graph.are_nodes_reachable(id1,id5));
-    EXPECT_TRUE(graph.are_nodes_reachable(id6,id7));
+    graph.erase(id4);
+    EXPECT_TRUE(graph.isolated(id5));
+    EXPECT_FALSE(graph.reachable(id0,id1));
+    EXPECT_TRUE(graph.reachable(id1,id2));
+    EXPECT_TRUE(graph.reachable(id1,id3));
+    EXPECT_FALSE(graph.reachable(id1,id7));
+    EXPECT_FALSE(graph.reachable(id2,id7));
+    EXPECT_FALSE(graph.reachable(id3,id7));
+    EXPECT_FALSE(graph.reachable(id5,id7));
+    EXPECT_FALSE(graph.reachable(id1,id5));
+    EXPECT_TRUE(graph.reachable(id6,id7));
 
-    EXPECT_THAT(graph.get_reachable_nodes(id0),ElementsAre(id0));
-    EXPECT_THAT(graph.get_reachable_nodes(id1),ElementsAre(id1,id2,id3));
-    EXPECT_THAT(graph.get_reachable_nodes(id6),ElementsAre(id6,id7));
-    EXPECT_THAT(graph.get_reachable_nodes(id5),ElementsAre(id5));
+    EXPECT_THAT(graph.get_reachable(id0),ElementsAre(id0));
+    EXPECT_THAT(graph.get_reachable(id1),ElementsAre(id1,id2,id3));
+    EXPECT_THAT(graph.get_reachable(id6),ElementsAre(id6,id7));
+    EXPECT_THAT(graph.get_reachable(id5),ElementsAre(id5));
 }
+
+TEST_F(SimpleGraphTestFixtureWithNodes, SimpleGraphGetEdgeListReturnsCorrect)
+{
+    Vec<pair<int,int>> expected;
+    expected.push_back(pair<int,int>(1,3));
+    expected.push_back(pair<int,int>(2,3));
+    expected.push_back(pair<int,int>(3,4));
+    expected.push_back(pair<int,int>(4,5));
+    expected.push_back(pair<int,int>(4,6));
+    expected.push_back(pair<int,int>(4,7));
+    expected.push_back(pair<int,int>(6,7));
+    EXPECT_EQ(graph.get_edge_list(),expected);
+
+    expected.clear();
+    expected.push_back(pair<int,int>(1,3));
+    expected.push_back(pair<int,int>(2,3));
+    expected.push_back(pair<int,int>(6,7));
+    graph.erase(id4);
+    EXPECT_EQ(graph.get_edge_list(),expected);
+}
+
+TEST_F(VertexGraphTestFixtureWithVertices, VertexGraphAddNodeOnEdgeSplitsEdge)
+{
+    // Adding a point not on an edge has no effect on the edge connections
+    EXPECT_TRUE(graph.adjacent(id4,id5));
+    int id9 = graph.add({1.,-2.});
+    EXPECT_TRUE(graph.adjacent(id4,id5));
+    EXPECT_FALSE(graph.adjacent(id9,id4));
+    EXPECT_FALSE(graph.adjacent(id9,id5));
+
+    // Adding a point at (1,-3) splits the edge between 4 and 5
+    EXPECT_TRUE(graph.adjacent(id4,id5));
+    int id10 = graph.add({1.,-3.});
+    EXPECT_FALSE(graph.adjacent(id4,id5));  // not adjacent but reachable
+    EXPECT_TRUE(graph.reachable(id4,id5));
+    EXPECT_TRUE(graph.adjacent(id10,id4));
+    EXPECT_TRUE(graph.adjacent(id10,id5));
+}
+
+TEST_F(VertexGraphTestFixtureWithVertices, VertexGraphConnectNodesCollinearAndNoncollinear)
+{
+    // New positions are (-1,-5) and (3,-1)
+    // These are collinear with id2, id4, id5
+    int id9 = graph.add({-1,-5});
+    int id10 = graph.add({3,-1});
+
+    // Try connecting id9 to id5
+    // No intermediate points
+    graph.connect(id9,id5);
+    EXPECT_TRUE(graph.reachable(id9,id2));
+    EXPECT_FALSE(graph.reachable(id9,id10));
+
+    // Now connect id9 to id10
+    // id4 and id5 are intermediates
+    graph.connect(id9,id10);
+    EXPECT_TRUE(graph.reachable(id9,id10));
+    EXPECT_TRUE(graph.reachable(id9,id2));
+    EXPECT_TRUE(graph.adjacent(id9,id5));
+    EXPECT_TRUE(graph.adjacent(id5,id4));
+    EXPECT_TRUE(graph.adjacent(id4,id10));
+    EXPECT_FALSE(graph.adjacent(id9,id10));
+    EXPECT_FALSE(graph.adjacent(id4,id2));
+
+    graph.disconnect(id9,id5);
+    graph.disconnect(id10,id4);
+    EXPECT_TRUE(graph.isolated(id9));
+    EXPECT_TRUE(graph.isolated(id10));
+
+    // Finally remove id10, connect id9 to id2
+    graph.erase(id10);
+    graph.connect(id9,id2);
+    EXPECT_TRUE(graph.reachable(id9,id2));
+    EXPECT_TRUE(graph.adjacent(id9,id5));
+    EXPECT_TRUE(graph.adjacent(id5,id4));
+    EXPECT_TRUE(graph.adjacent(id4,id2));
+}
+
 
 

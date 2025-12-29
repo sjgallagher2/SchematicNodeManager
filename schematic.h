@@ -34,7 +34,7 @@ public:
 
 private:
     vector<int> _wires;
-    SimpleVertexGraph _graph;
+    VertexGraph _graph;
 
 };
 

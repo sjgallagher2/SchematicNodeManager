@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <numeric>  // iota
 
 // See also this example lib: https://github.com/OSSIA/libossia/blob/v3/OSSIA/ossia/detail/algorithms.hpp
 
@@ -53,6 +54,25 @@ auto find(C& c, const U& val){return std::find(std::begin(c), std::end(c), val);
 template <typename C, typename Pred>
 auto find_if(C& c, Pred p){return std::find_if(std::begin(c), std::end(c), p);}
 
+// Return vector of sorted indices based on `v`. Does not modify v.
+using std::vector;
+template<typename T>
+vector<size_t> argsort(const vector<T>& v)
+{
+    // Initialize with original indices
+    vector<size_t> idx(v.size());
+    std::iota(idx.begin(),idx.end(),0);
+
+    // Sort indices
+    std::stable_sort(idx.begin(),idx.end(),
+                [&v](size_t i1,size_t i2) {return v[i1] < v[i2];}
+                );
+
+    return idx;
+}
+
+
 }  // namespace Estd
+
 
 #endif // UTILS_H
