@@ -21,19 +21,25 @@ protected:
     // Default constructor
 };
 
+class SimpleVertexGraphTestFixture : public Test
+{
+protected:
+    SimpleVertexGraph graph;
+};
+
 class SimpleGraphTestFixtureWithVertices : public Test
 {
 protected:
     SimpleGraph graph;
     SimpleGraphTestFixtureWithVertices() {
-        id0 = graph.add_node({-1,0},false); // isolated
-        id1 = graph.add_node({0,0},false);
-        id2 = graph.add_node({1,0},false);
-        id3 = graph.add_node({2,0},false);
-        id4 = graph.add_node({3,0},false);
-        id5 = graph.add_node({4,0},false);
-        id6 = graph.add_node({5,0},false);
-        id7 = graph.add_node({6,0},false);
+        id0 = graph.add_node(false);
+        id1 = graph.add_node(false);
+        id2 = graph.add_node(false);
+        id3 = graph.add_node(false);
+        id4 = graph.add_node(false);
+        id5 = graph.add_node(false);
+        id6 = graph.add_node(false);
+        id7 = graph.add_node(false);
 
         graph.connect_nodes(id1,id3,false);
         graph.connect_nodes(id2,id3,false);
@@ -46,27 +52,67 @@ protected:
     int id0,id1,id2,id3,id4,id5,id6,id7;
 };
 
+
+class SimpleVertexGraphTestFixtureWithVertices : public Test
+{
+protected:
+    SimpleVertexGraph graph;
+    SimpleVertexGraphTestFixtureWithVertices() {
+        id0 = graph.add_vertex({-1,0},false);
+        id1 = graph.add_vertex({0,0},false);
+        id2 = graph.add_vertex({1,0},false);
+        id3 = graph.add_vertex({2,0},false);
+        id4 = graph.add_vertex({3,0},false);
+        id5 = graph.add_vertex({4,0},false);
+        id6 = graph.add_vertex({5,0},false);
+        id7 = graph.add_vertex({6,0},false);
+
+        graph.connect_nodes(id1,id3,false);
+        graph.connect_nodes(id2,id3,false);
+        graph.connect_nodes(id3,id4,false);
+        graph.connect_nodes(id4,id5,false);
+        graph.connect_nodes(id4,id6,false);
+        graph.connect_nodes(id4,id7,false);
+        graph.connect_nodes(id6,id7,true);  // with traversal
+    }
+    int id0,id1,id2,id3,id4,id5,id6,id7;
+};
+
+
 // First test the supporting id pool data structure
 TEST(GraphIdPoolSuite, TestGraphIdPoolFunctionality)
 {
     IdPool pool;
-    int id0 = pool.get();
-    int id1 = pool.get();
-    int id2 = pool.get();
-    pool.add_back(id1);
+    int id0,id1,id2;
+    id0 = pool.get();
+    id1 = pool.get();
+    id2 = pool.get();
+    pool.put_back(id1);
     id1 = pool.get();     // should get its id back
     EXPECT_EQ(1,id1);
-    EXPECT_THROW(pool.add_back(-1),std::out_of_range);
-    EXPECT_THROW(pool.add_back(99),std::out_of_range);
+    EXPECT_THROW(pool.put_back(-1),std::out_of_range);
+    EXPECT_THROW(pool.put_back(99),std::out_of_range);
 }
 
-TEST_F(SimpleGraphTestFixture, SimpleGraphAddVertexWorks)
+TEST_F(SimpleGraphTestFixture, SimpleGraphAddNodeWorks)
 {
-    int id = graph.add_node(Coordinate2(0,0));
+    int id = graph.add_node();
     EXPECT_EQ(0,id);
-    id = graph.add_node(Coordinate2(0,0));
+    id = graph.add_node();
+    EXPECT_EQ(1,id);
+    id = graph.add_node();
+    EXPECT_EQ(2,id);
+    vector<int> adj_vtxs = graph.get_reachable_nodes(id);
+    EXPECT_THAT(adj_vtxs,ElementsAre(id));
+}
+
+TEST_F(SimpleVertexGraphTestFixture, SimpleVertexGraphAddVertexWorks)
+{
+    int id = graph.add_vertex(Coordinate2(0,0));
+    EXPECT_EQ(0,id);
+    id = graph.add_vertex(Coordinate2(0,0));
     EXPECT_EQ(0,id);  // Doesn't add anything
-    id = graph.add_node(Coordinate2(0,5));
+    id = graph.add_vertex(Coordinate2(0,5));
     EXPECT_EQ(1,id);
     vector<int> adj_vtxs = graph.get_reachable_nodes(id);
     EXPECT_THAT(adj_vtxs,ElementsAre(id));
@@ -74,11 +120,9 @@ TEST_F(SimpleGraphTestFixture, SimpleGraphAddVertexWorks)
 
 TEST_F(SimpleGraphTestFixture, SimpleGraphInitializesTwoVerticesCorrectly)
 {
-    // Can we construct vertices
-    Coordinate2 p1(0,0);
-    Coordinate2 p2(0,5);
-    int id1 = graph.add_node(p1);
-    int id2 = graph.add_node(p2);
+    // Can we construct nodes
+    int id1 = graph.add_node();
+    int id2 = graph.add_node();
 
     /* Were the vertices added properly */
     // Are these vertices connected (they should not be)
@@ -92,16 +136,38 @@ TEST_F(SimpleGraphTestFixture, SimpleGraphInitializesTwoVerticesCorrectly)
     // Calling is_vertex_isolated on a non-existent vertex (should fail with invalid_argument)
     EXPECT_THROW(graph.is_node_isolated(99),std::invalid_argument);
     // Are these the only vertex id's listed (they should be)
-    vector<int> vids = graph.get_node_ids();
+    vector<int> vids = graph.get_all_node_ids();
+    EXPECT_THAT(vids,ElementsAre(id1,id2));
+}
+
+TEST_F(SimpleVertexGraphTestFixture, SimpleVertexGraphInitializesTwoVerticesCorrectly)
+{
+    // Can we construct vertices
+    Coordinate2 p1(0,0);
+    Coordinate2 p2(0,5);
+    int id1 = graph.add_vertex(p1);
+    int id2 = graph.add_vertex(p2);
+
+    /* Were the vertices added properly */
+    // Are these vertices connected (they should not be)
+    // Throw invalid_argument if either id does not exist
+    EXPECT_THROW(graph.are_nodes_adjacent(99,0),std::invalid_argument);
+    EXPECT_THROW(graph.are_nodes_adjacent(0,99),std::invalid_argument);
+    EXPECT_FALSE(graph.are_nodes_adjacent(id1,id2));
+    // Are these vertices both isolated (they should be)
+    EXPECT_TRUE(graph.is_node_isolated(id1));
+    EXPECT_TRUE(graph.is_node_isolated(id2));
+    // Calling is_vertex_isolated on a non-existent vertex (should fail with invalid_argument)
+    EXPECT_THROW(graph.is_node_isolated(99),std::invalid_argument);
+    // Are these the only vertex id's listed (they should be)
+    vector<int> vids = graph.get_all_node_ids();
     EXPECT_THAT(vids,ElementsAre(id1,id2));
 }
 
 TEST_F(SimpleGraphTestFixture, SimpleGraphConnectTwoVerticesWorks)
 {
-    Coordinate2 p1(0,0);
-    Coordinate2 p2(0,5);
-    int id1 = graph.add_node(p1);
-    int id2 = graph.add_node(p2);
+    int id1 = graph.add_node();
+    int id2 = graph.add_node();
 
     /* Testing connections */
     // Can we connect to a non-existent vertex (should fail with invalid_argument)
@@ -125,10 +191,8 @@ TEST_F(SimpleGraphTestFixture, SimpleGraphConnectTwoVerticesWorks)
 
 TEST_F(SimpleGraphTestFixture, SimpleGraphDisconnectVerticesWorks)
 {
-    Coordinate2 p1(0,0);
-    Coordinate2 p2(0,5);
-    int id1 = graph.add_node(p1);
-    int id2 = graph.add_node(p2);
+    int id1 = graph.add_node();
+    int id2 = graph.add_node();
     graph.connect_nodes(id1,id2);
 
     /* Testing disconnections */

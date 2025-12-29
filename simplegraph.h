@@ -3,6 +3,7 @@
 
 #include <map>
 #include <queue>
+#include <memory>
 #include "utils.h"
 #include "coordinate2.h"
 
@@ -10,6 +11,7 @@ using Estd::Vec;
 using std::map;
 using std::pair;
 using std::queue;
+using std::unique_ptr;
 
 
 class GraphNode
@@ -38,28 +40,32 @@ inline bool operator==(const Vertex& lhs, const Vertex& rhs)
 }
 
 
+/*
+ * Basic integer pool for ids in a graph.
+ * Return an id to the pool with put_back()
+ */
 class IdPool
 {
 public:
-    IdPool() : pool_size{1} {free_ids.push(0);};
+    IdPool() : _pool_size{1} {_free_ids.push(0);};
     inline int get() {
-        if(free_ids.empty())
+        if(_free_ids.empty())
         {
-            free_ids.push(pool_size);
-            pool_size++;
+            _free_ids.push(_pool_size);
+            _pool_size++;
         }
-        int next_id = free_ids.front();
-        free_ids.pop();
+        int next_id = _free_ids.front();
+        _free_ids.pop();
         return next_id;
     }
-    inline void add_back(int id)
+    inline void put_back(int id)
     {
-        if((id >= 0)&&(id < pool_size)) free_ids.push(id);
+        if((id >= 0)&&(id < _pool_size)) _free_ids.push(id);
         else throw std::out_of_range("Id returned to pool was not from pool originally.");
     }
 private:
-    queue<int> free_ids;
-    int pool_size;
+    queue<int> _free_ids;
+    int _pool_size;
 };
 
 
@@ -75,19 +81,21 @@ private:
  * Internally, each id has a vector of adjacent vertices (an adjacency list) which
  * is updated to reflect the current state of the graph.
  */
+
 class SimpleGraph
 {
 public:
-    // TODO: Replace Vertex with generic GraphNode class with get_id() and comparison only
-    //       --> Resource management needs to be refactored in for polymorphism
+    using GraphNodeP = unique_ptr<GraphNode>;
+
     SimpleGraph() {}
-    Vec<int> get_node_ids();
+    virtual ~SimpleGraph() {}
+    Vec<int> get_all_node_ids();
 
     // Modify graph, optional traversal afterwards
     // Only set traverse=false if you have a large number of
     // operations or a large graph, and if you plan to traverse
     // later.
-    int add_node(Coordinate2 p, bool traverse=true);
+    int add_node(bool traverse=true);
     void connect_nodes(int,int,bool traverse=true);
     void disconnect_nodes(int,int,bool traverse=true);
     void delete_node(int,bool traverse=true);
@@ -95,7 +103,6 @@ public:
     // Get info, no traversal required
     bool are_nodes_adjacent(int,int);
     bool is_node_isolated(int);
-    int find_node(Coordinate2 p);
 
     // Get info, traversal required
     bool are_nodes_reachable(int id1,int id2,bool force_traverse=false);
@@ -104,19 +111,36 @@ public:
     // Graph traversal, depth-first search
     void traverse_graph();
 
+protected:
+    void add_node(GraphNodeP nn,bool traverse=true);
+    IdPool _idpool;
+    Vec<GraphNodeP> _nodes;            // Node vector
+
 private:
-    Vec<Vertex> vertices;         // Vertex vector
-    map<int,Vec<int>> adjacent;   // Adjacent vertices of each vertex by id
-    IdPool idpool;
-    Vertex& get_node(int);      // Get vertex by id
-    map<int,int> vertex_tree_id;  // Map of vertex id -> tree id
+    map<int,Vec<int>> _adjacent;       // Adjacent vertices of each node by id
+    const GraphNode& get_node(int);   // Get node by id
+    map<int,int> _node_tree_id;        // Map of node id -> tree id
+
+};
+
+
+
+class SimpleVertexGraph : public SimpleGraph
+{
+public:
+    using GraphNodeP = unique_ptr<GraphNode>;
+    SimpleVertexGraph() {}
+    virtual ~SimpleVertexGraph() {}
+
+    int add_vertex(Coordinate2,bool traverse=true);
 };
 
 // Predicate for matching ids
 struct MatchingId{
     int val;
     MatchingId(int v) : val{v}{}
-    bool operator()(const Vertex& r){return r.get_id()==val;}
+    bool operator()(const unique_ptr<GraphNode>& r){return r->get_id()==val;}
 };
+
 
 #endif // SIMPLEGRAPH_H

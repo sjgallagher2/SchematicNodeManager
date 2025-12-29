@@ -3,9 +3,14 @@
 
 #include <string>
 #include "coordinate2.h"
+#include "simplegraph.h"
 
 using std::string;
 using std::vector;
+
+/*
+ *
+ */
 
 class Schematic
 {
@@ -17,9 +22,19 @@ public:
     int add_wire(Coordinate2 a, Coordinate2 b);
     string get_netname(int wid);
     vector<int> select_net(string netname);
+    bool remove_wire(int wid);
+    vector<int> select_net(Coordinate2 p, bool traverse=true);
+    vector<string> get_netnames();
+    int add_port_node(Coordinate2 p);
+    int select_port_node(Coordinate2 p);
+    bool remove_port_node(int pid);
+    void print();
+    bool is_connected(int wid1, int wid2);
+
 
 private:
-    vector<int> wires;
+    vector<int> _wires;
+    SimpleVertexGraph _graph;
 
 };
 
