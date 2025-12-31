@@ -10,18 +10,6 @@
 #include "utils.h"
 #include "coordinate2.h"
 
-using Estd::Vec;
-using std::map;
-using std::pair;
-using std::queue;
-using std::unique_ptr;
-using std::make_unique;
-using std::find;
-using Estd::find;
-using Estd::find_if;
-using Estd::contains;
-using Estd::any_of;
-
 
 class GraphNode
 {
@@ -73,7 +61,7 @@ public:
         else throw std::out_of_range("Id returned to pool was not from pool originally.");
     }
 private:
-    queue<int> _free_ids;
+    std::queue<int> _free_ids;
     int _pool_size;
 };
 
@@ -87,7 +75,7 @@ private:
  * by an int `id` which must be stored. You can get a list of nodes by id, or
  * look up a nodeby its position.
  *
- * Internally, each id has a vector of adjacent nodes (an adjacency list) which
+ * Internally, each id has a Estd::Vector of adjacent nodes (an adjacency list) which
  * is updated to reflect the current state of the graph.
  */
 template<typename NodeT>
@@ -95,13 +83,13 @@ class AbstractGraph
 {
 public:
     static_assert(std::is_base_of<GraphNode,NodeT>::value,"NodeT must derive from Graphnode");
-    using GraphNodeP = unique_ptr<NodeT>;
+    using GraphNodeP = std::unique_ptr<NodeT>;
 
     AbstractGraph() {}
     virtual ~AbstractGraph() {}
-    Vec<int> get_all_ids()
+    Estd::Vec<int> get_all_ids()
     {
-        Vec<int> vids(_nodes.size());
+        Estd::Vec<int> vids(_nodes.size());
         for(int i=0; i<_nodes.size();i++)
         {
             vids[i] = _nodes[i]->get_id();
@@ -113,7 +101,7 @@ public:
     struct MatchingId{
         int val;
         MatchingId(int v) : val{v}{}
-        bool operator()(const unique_ptr<NodeT>& r){return r->get_id()==val;}
+        bool operator()(const std::unique_ptr<NodeT>& r){return r->get_id()==val;}
     };
 
     //virtual int add(bool traverse=true)
@@ -127,12 +115,12 @@ public:
 
     // Get info, traversal required
     virtual bool reachable(int id1,int id2,bool force_traverse=false) {return _are_nodes_reachable(id1,id2,force_traverse);}
-    virtual Vec<int> get_reachable(int id,bool force_traverse=false) {return _get_reachable_nodes(id,force_traverse);}
+    virtual Estd::Vec<int> get_reachable(int id,bool force_traverse=false) {return _get_reachable_nodes(id,force_traverse);}
 
     // Graph traversal, depth-first search
     virtual void traverse_graph() {_traverse_graph();}
-    virtual Vec<pair<int,int>> get_edge_list() {return _get_edge_list();}
-    const Vec<int>& get_adjacent(int id)
+    virtual Estd::Vec<std::pair<int,int>> get_edge_list() {return _get_edge_list();}
+    const Estd::Vec<int>& get_adjacent(int id)
     {
         try{
             return _adjacent.at(id);
@@ -150,14 +138,14 @@ protected:
     // later.
     int _add_node(bool traverse)
     {
-        GraphNodeP nn = make_unique<NodeT>(_idpool.get());
+        GraphNodeP nn = std::make_unique<NodeT>(_idpool.get());
         int nodeid = nn->get_id();
 
         // add to nodes
         _nodes.push_back(std::move(nn));
 
         // Create a new entry in `adjacent` with an empty list
-        _adjacent.insert(pair(nodeid,Vec<int>{}));
+        _adjacent.insert(std::pair(nodeid,Estd::Vec<int>{}));
 
         if(traverse) _traverse_graph();
 
@@ -167,14 +155,14 @@ protected:
     void _add_node(GraphNodeP nn, bool traverse)
     {
         // Protected method for adding nodes by pointer
-        // usage: add_node(std::move(make_unique<NodeDerivedType>(idpool.get(),...)))
+        // usage: add_node(std::move(std::make_unique<NodeDerivedType>(idpool.get(),...)))
         int nodeid = nn->get_id();
 
         // add to nodes
         _nodes.push_back(std::move(nn));
 
         // Create a new entry in `adjacent` with an empty list
-        _adjacent.insert(pair(nodeid,Vec<int>{}));
+        _adjacent.insert(std::pair(nodeid,Estd::Vec<int>{}));
 
         if(traverse) _traverse_graph();
     }
@@ -220,7 +208,7 @@ protected:
     {
         try {  // Checks that id is in graph, throws invalid_argument otherwise
             // For each node in the adjacency list `_adjacent[id]`, call disconnect_vertices()
-            Vec<int> adj_id = _adjacent.at(id);  // Copy this so we don't modify while looping
+            Estd::Vec<int> adj_id = _adjacent.at(id);  // Copy this so we don't modify while looping
             for(auto id_other : adj_id)
             {
                 _disconnect_nodes(id,id_other,false);
@@ -263,18 +251,18 @@ protected:
     void _traverse_graph()
     {
         /* Set Up */
-        using CItr = typename Vec<GraphNodeP>::const_iterator;  // Iterators are safe, underlying Vec won't change
+        using CItr = typename Estd::Vec<GraphNodeP>::const_iterator;  // Iterators are safe, underlying Estd::Vec won't change
 
-        Vec<int> parents;            // Stack of parents to return to
-        map<CItr,int> vert_dfs_id;   // New ids in traversal order
+        Estd::Vec<int> parents;            // Stack of parents to return to
+        std::map<CItr,int> vert_dfs_id;   // New ids in traversal order
         int dfs_id = 0;              // running id value, gets incremented
         int tree_id = -1;             // Tree id for new spanning trees
         _node_tree_id.clear();      // remap node id -> tree id
 
         // Make bimap for id <-> iterator
-        map<CItr,int> vert_itr_id;   // iterator -> id
-        map<int,CItr> vert_id_itr;   // id -> iterator
-        map<int,bool> visited;       // Visited nodes map
+        std::map<CItr,int> vert_itr_id;   // iterator -> id
+        std::map<int,CItr> vert_id_itr;   // id -> iterator
+        std::map<int,bool> visited;       // Visited nodes map
         for(auto vitr = _nodes.begin(); vitr != _nodes.end(); ++vitr)
         {
             vert_itr_id[vitr] = (*vitr)->get_id();
@@ -299,13 +287,13 @@ protected:
             // 1. Initialize
             current_id = vert_itr_id[current_itr];
             next_itr = _nodes.cend();
-            Vec<int> current_adjs = _adjacent[current_id];
+            Estd::Vec<int> current_adjs = _adjacent[current_id];
 
             // 2. Check: Is `parents` empty and all nodes are visited?
             if(parents.empty())
             {
                 // Check if all true (w/ lambda)
-                if(Estd::all_of(visited, [](const pair<int,bool>& r){return r.second;}))
+                if(Estd::all_of(visited, [](const std::pair<int,bool>& r){return r.second;}))
                 {
                     current_itr = _nodes.cend();
                     continue;
@@ -378,7 +366,7 @@ protected:
 
         try
         {
-            Vec<int>& id1_adj = _adjacent.at(id1);
+            Estd::Vec<int>& id1_adj = _adjacent.at(id1);
             return find(id1_adj.begin(),id1_adj.end(),id2) != id1_adj.end();
         }
         catch(std::out_of_range)
@@ -390,12 +378,12 @@ protected:
     {
         try
         {
-            Vec<int>& id_adj = _adjacent.at(id);
+            Estd::Vec<int>& id_adj = _adjacent.at(id);
             return id_adj.size() == 0;
         }
         catch(std::out_of_range){ throw std::invalid_argument("Supplied id is not in the graph."); }
     }
-    Vec<int> _get_reachable_nodes(int id, bool force_traverse)
+    Estd::Vec<int> _get_reachable_nodes(int id, bool force_traverse)
     {
         if(force_traverse) _traverse_graph();
         // Check if id exists
@@ -409,7 +397,7 @@ protected:
         }
 
         // Select all vertices matching that tree id
-        Vec<int> reachables;
+        Estd::Vec<int> reachables;
         for(auto& pair : _node_tree_id)
         {
             if(pair.second == tree_id) reachables.push_back(pair.first);
@@ -426,28 +414,28 @@ protected:
         throw std::invalid_argument("Supplied id is not in the graph.");
     }
 
-    // Get vector of edges as (id1,id2)
-    Vec<pair<int,int>> _get_edge_list()
+    // Get Estd::Vector of edges as (id1,id2)
+    Estd::Vec<std::pair<int,int>> _get_edge_list()
     {
-        Vec<pair<int,int>> edges;
+        Estd::Vec<std::pair<int,int>> edges;
         // Go through adjacency lists
         // If node id > this, add (this,other) to edges
         for(auto& adjlist : _adjacent)
         {
             for(auto& oth : adjlist.second)
             {
-                if(oth > adjlist.first) edges.push_back(pair<int,int>(adjlist.first,oth));
+                if(oth > adjlist.first) edges.push_back(std::pair<int,int>(adjlist.first,oth));
             }
         }
         return edges;
     }
 
     IdPool _idpool;                    // Id pool  -- only protected for add() methods
-    Vec<GraphNodeP> _nodes;            // Node vector
+    Estd::Vec<GraphNodeP> _nodes;            // Node Estd::Vector
 
 private:
-    map<int,Vec<int>> _adjacent;       // Adjacent vertices of each node by id
-    map<int,int> _node_tree_id;        // Map of node id -> tree id
+    std::map<int,Estd::Vec<int>> _adjacent;       // Adjacent vertices of each node by id
+    std::map<int,int> _node_tree_id;        // Map of node id -> tree id
 };
 
 /*
@@ -472,8 +460,8 @@ public:
 class VertexGraph : public AbstractGraph<GraphVertex>
 {
 public:
-    using VertexP = unique_ptr<GraphVertex>;
-    using Edge = pair<int,int>;
+    using VertexP = std::unique_ptr<GraphVertex>;
+    using Edge = std::pair<int,int>;
     VertexGraph() {}
     virtual ~VertexGraph() {}
 
@@ -500,10 +488,10 @@ public:
         // If we haven't returned, we can safely add this Vertex
         int nodeid = _idpool.get();
         // This clunky syntax ensures we only add GraphVertex objects
-        _add_node(std::move(make_unique<GraphVertex>(nodeid,p)),traverse);
+        _add_node(std::move(std::make_unique<GraphVertex>(nodeid,p)),traverse);
 
         // Now check if this new vertex is on an existing edge
-        Vec<Edge> edges = _get_edge_list();
+        Estd::Vec<Edge> edges = _get_edge_list();
         for(auto& edge : edges)
         {
             if(_on_edge(nodeid,edge))
@@ -531,8 +519,8 @@ public:
         Coordinate2 p2 = _get_node(id2).get_pos();
         double tol = p1.prec();
 
-        Vec<GraphVertex> collinear_vtxs;
-        Vec<Coordinate2> collinear_coords;
+        Estd::Vec<GraphVertex> collinear_vtxs;
+        Estd::Vec<Coordinate2> collinear_coords;
         for(auto& other : _nodes)
         {
             // collinear() is pretty light, run it on all vertices
@@ -565,7 +553,7 @@ public:
         collinear_vtxs.push_back(_get_node(id2));
         collinear_coords.push_back(p2);
         // Now calculate "distances" from p1
-        Vec<double> dists;
+        Estd::Vec<double> dists;
         for(auto& c : collinear_coords)
         {
             dists.push_back(std::pow(p1.x-c.x,2)+std::pow(p1.y-c.y,2));

@@ -21,7 +21,7 @@ using std::cout;
 using std::endl;
 using std::string;
 template <typename T>
-void print_Vec(const string&& name, const Vec<T>& v)
+void print_Vec(const string&& name, const Estd::Vec<T>& v)
 {
     if(v.size() == 0) cout << name << " = []\n";
     else
@@ -314,7 +314,7 @@ TEST_F(SimpleGraphTestFixtureWithNodes, SimpleGraphTraversalAndReachableVertices
 
 TEST_F(SimpleGraphTestFixtureWithNodes, SimpleGraphGetEdgeListReturnsCorrect)
 {
-    Vec<pair<int,int>> expected;
+    Estd::Vec<pair<int,int>> expected;
     expected.push_back(pair<int,int>(1,3));
     expected.push_back(pair<int,int>(2,3));
     expected.push_back(pair<int,int>(3,4));

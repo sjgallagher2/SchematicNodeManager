@@ -2,11 +2,11 @@
 #define SCHEMATIC_H
 
 #include <string>
+#include <map>
 #include "coordinate2.h"
 #include "simplegraph.h"
+#include "utils.h"
 
-using std::string;
-using std::vector;
 
 /*
  *
@@ -15,27 +15,29 @@ using std::vector;
 class Schematic
 {
 public:
-    string name;
+    std::string name;
     Schematic() : name{"default"} {}
-    Schematic(string name) : name{name} {}
+    Schematic(std::string name) : name{name} {}
 
-    int add_wire(Coordinate2 a, Coordinate2 b);
-    string get_netname(int wid);
-    vector<int> select_net(string netname);
+    void add_wire(Coordinate2 a, Coordinate2 b, bool traverse=true);
+    std::string get_netname(int wid);
+    Estd::Vec<int> select_net(std::string netname);
     bool remove_wire(int wid);
-    vector<int> select_net(Coordinate2 p, bool traverse=true);
-    vector<string> get_netnames();
+    Estd::Vec<int> select_net(Coordinate2 p, bool traverse=true);
+    Estd::Vec<std::string> get_netnames();
     int add_port_node(Coordinate2 p);
     int select_port_node(Coordinate2 p);
     bool remove_port_node(int pid);
     void print();
-    bool is_connected(int wid1, int wid2);
 
+    void update_nets(int vid1=-1,int vid2=-1);
 
 private:
-    vector<int> _wires;
+    Estd::Vec<std::pair<int,int>> _wires;  // edges in current schematic
     VertexGraph _graph;
-
+    std::map<std::string,Estd::Vec<int>> _nets;  // map of netname -> graphnodes
+    Estd::Vec<Estd::Vec<int>> _trees;      // spanning trees
+    void _update_trees();                  // reprocess spanning trees
 };
 
 #endif // SCHEMATIC_H
