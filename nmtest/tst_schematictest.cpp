@@ -93,6 +93,8 @@ TEST_F(SchematicTestFixture, SchematicAddWireReturnsValidWireId)
 TEST_F(SchematicTestFixtureWithWires, SchematicAddWirePrintsCorrectTrees)
 {
     sch.print();
+    sch.remove_wire({10,12});
+    sch.print();
 }
 
 /*

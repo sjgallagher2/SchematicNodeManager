@@ -8,7 +8,9 @@
 #include "utils.h"
 
 
-/*
+/* Schematic class for managing wires and ports on a schematic.
+ *
+ * NOTE: Ports CANNOT have integer numbers for names. Besides, why would you do that?
  *
  */
 
@@ -42,6 +44,7 @@ private:
     Estd::Vec<Estd::Vec<int>> _vtrees;      // spanning trees of vertices
     Estd::Vec<Estd::Vec<Wire>> _etrees;
     void _update_trees();                  // reprocess spanning trees
+    IdPool _idpool;
 };
 
 

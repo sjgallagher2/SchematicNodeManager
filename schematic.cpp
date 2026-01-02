@@ -2,6 +2,7 @@
 #include <set>
 
 #include <iostream>
+#include <cctype>  // ::isdigit
 
 using std::cout;
 using std::endl;
@@ -79,7 +80,7 @@ Wire Schematic::select_wire(Coordinate2 p)
 bool Schematic::remove_wire(Wire w, bool traverse)
 {
     _graph.disconnect(w.first,w.second,false);
-    // isolated() doesn't depend on traversal
+    // note that isolated() doesn't depend on traversal
     if(_graph.isolated(w.first)) _graph.erase(w.first,false);
     if(_graph.isolated(w.second)) _graph.erase(w.second,false);
 
@@ -99,20 +100,34 @@ void print_Vec(const string&& name, const Estd::Vec<T>& v)
         cout << v.back() << "]\n";
     }
 }
+
+template <typename T>
+void print_Vec(const string& name, const Estd::Vec<T>& v)
+{
+    if(v.size() == 0) cout << name << " = []\n";
+    else
+    {
+        cout << name << " = [";
+        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
+        cout << v.back() << "]\n";
+    }
+}
 void print_Wire(const Wire& w)
 {
-    cout << "("<<w.first<<", "<<w.second<<")"<<endl;
+    cout << "\t("<<w.first<<", "<<w.second<<")"<<endl;
 }
 
 void Schematic::print()
 {
-    // for now, print spanning trees
+    // print spanning trees
     _update_trees();
+    update_nets();
     for(auto& tr : _vtrees)
     {
         print_Vec("Tree: ",tr);
     }
 
+    // print spanning trees by edges
     int i=0;
     for(auto& tr : _etrees)
     {
@@ -120,6 +135,20 @@ void Schematic::print()
         for(auto& w : tr) print_Wire(w);
         i++;
     }
+
+    // print nets
+    for(auto& pair : _nets)
+    {
+        cout << "******************\n";
+        cout << "Net name: " << pair.first << endl;
+        cout << "Wires: \n";
+        for(auto& w : pair.second) print_Wire(w);
+    }
+}
+
+bool netname_is_int(const string& name)
+{
+    return !name.empty() && std::all_of(name.begin(), name.end(), ::isdigit);
 }
 
 /* Update net names.
@@ -136,13 +165,50 @@ void Schematic::update_nets(int vhint1, int vhint2)
         // Remove _nets keys that don't correspond to existing spanning trees
         // If any spanning tree is not a value in _nets, give it a new name, checking
         // for ports
-        for(auto& tree : _vtrees)
+        map<string,Vec<Wire>> nets_new;
+        std::set<int> ok_trees;
+        std::set<string> ok_nets;
+        for(int treeid=0; treeid < _etrees.size(); treeid++)
         {
             for(auto& nm : _nets)
             {
-                //
+                if(nm.second == _etrees[treeid])
+                {
+                    nets_new[nm.first] = nm.second;
+                    ok_trees.insert(treeid);
+                    ok_nets.insert(nm.first);
+                    break;
+                }
             }
         }
+        // Any nets not in `ok_nets` can be removed and (if integer)
+        // added back to the id pool
+        for(auto& pair : _nets)
+        {
+            if(ok_nets.find(pair.first) == ok_nets.end())
+            {
+                // See if name is a plain number, and if so, add back to pool
+                // NOTE: This means we CANNOT allow users to set numerical net names
+                if(netname_is_int(pair.first))
+                {
+                    int netnum = std::stoi(pair.first);
+                    _idpool.put_back(netnum);
+                }
+            }
+        }
+        // Any trees not in `ok_trees` must be given net names
+        for(int treeid=0; treeid < _etrees.size(); treeid++)
+        {
+            if(ok_trees.find(treeid) == ok_trees.end())
+            {
+                // Rename net
+                int net_num = _idpool.get();
+                string net_name = std::to_string(net_num);
+                nets_new[net_name] = _etrees[treeid];
+            }
+        }
+
+        _nets = nets_new;
     }
 }
 
