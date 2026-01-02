@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <utility>
 #include <algorithm>
+#include <set>
 #include "utils.h"
 #include "coordinate2.h"
 
@@ -116,10 +117,20 @@ public:
     // Get info, traversal required
     virtual bool reachable(int id1,int id2,bool force_traverse=false) {return _are_nodes_reachable(id1,id2,force_traverse);}
     virtual Estd::Vec<int> get_reachable(int id,bool force_traverse=false) {return _get_reachable_nodes(id,force_traverse);}
+    virtual Estd::Vec<Estd::Vec<int>> get_spanning_trees(bool force_traverse=false)
+    {
+        using Estd::Vec;
+        if(force_traverse) _traverse_graph();  // Update _trees
+        if(_trees.empty() && !force_traverse) _traverse_graph();
+        Vec<Vec<int>> trees_vec;
+        for(auto& pair : _trees) trees_vec.push_back(pair.second);
+        return trees_vec;
+    }
 
     // Graph traversal, depth-first search
     virtual void traverse_graph() {_traverse_graph();}
-    virtual Estd::Vec<std::pair<int,int>> get_edge_list() {return _get_edge_list();}
+    virtual Estd::Vec<std::pair<int,int>> get_all_edges() {return _get_edge_list();}
+
     const Estd::Vec<int>& get_adjacent(int id)
     {
         try{
@@ -128,6 +139,29 @@ public:
         {
             throw std::invalid_argument("Supplied id1 is not in the graph.");
         }
+    }
+    virtual std::map<int,Estd::Vec<int>> get_adjacency_lists() const
+    {
+        return _adjacent;
+    }
+    std::map<int,Estd::Vec<int>> get_sub_adjacency_lists(const Estd::Vec<int>& nodes)
+    {
+        std::set<int> node_set(nodes.begin(),nodes.end());  // for quick lookup
+        std::map<int,Estd::Vec<int>> src_adj_list = get_adjacency_lists();
+        std::map<int,Estd::Vec<int>> sub_adj_list;
+        Estd::Vec<int> node_adj_full;
+        for(auto& n : nodes)
+        {
+            node_adj_full = src_adj_list[n];
+            for(auto& adj : node_adj_full)
+            {
+                if(node_set.find(adj) != node_set.end())
+                {
+                    sub_adj_list[n].push_back(adj);
+                }
+            }
+        }
+        return sub_adj_list;
     }
 
 protected:
@@ -251,13 +285,14 @@ protected:
     void _traverse_graph()
     {
         /* Set Up */
-        using CItr = typename Estd::Vec<GraphNodeP>::const_iterator;  // Iterators are safe, underlying Estd::Vec won't change
+        using CItr = typename Estd::Vec<GraphNodeP>::const_iterator;  // Iterators are safe, underlying vector won't change
 
-        Estd::Vec<int> parents;            // Stack of parents to return to
+        Estd::Vec<int> parents;           // Stack of parents to return to
         std::map<CItr,int> vert_dfs_id;   // New ids in traversal order
-        int dfs_id = 0;              // running id value, gets incremented
+        int dfs_id = 0;               // running id value, gets incremented
         int tree_id = -1;             // Tree id for new spanning trees
-        _node_tree_id.clear();      // remap node id -> tree id
+        _node_tree_id.clear();        // remap node id -> tree id
+        _trees.clear();               // rebuild trees
 
         // Make bimap for id <-> iterator
         std::map<CItr,int> vert_itr_id;   // iterator -> id
@@ -313,6 +348,7 @@ protected:
                 vert_dfs_id[current_itr]=dfs_id;
                 dfs_id++;
                 _node_tree_id[current_id] = tree_id;
+                _trees[tree_id].push_back(current_id);
             }
 
             // 4. Check for unvisited adjacent nodes
@@ -431,11 +467,12 @@ protected:
     }
 
     IdPool _idpool;                    // Id pool  -- only protected for add() methods
-    Estd::Vec<GraphNodeP> _nodes;            // Node Estd::Vector
+    Estd::Vec<GraphNodeP> _nodes;      // Node vector
+    std::map<int,Estd::Vec<int>> _adjacent;       // Adjacent vertices of each node by id
 
 private:
-    std::map<int,Estd::Vec<int>> _adjacent;       // Adjacent vertices of each node by id
     std::map<int,int> _node_tree_id;        // Map of node id -> tree id
+    std::map<int,Estd::Vec<int>> _trees;  // Spanning trees map (as vertices)
 };
 
 /*
@@ -447,6 +484,31 @@ class SimpleGraph : public AbstractGraph<GraphNode>
 public:
     virtual int add(bool traverse=true) {return _add_node(traverse);}
 };
+
+/* SimpleStaticGraph is SimpleGraph without the ability to add or remove nodes.
+ * Non-const methods such as traverse() and disconnect()/connect() are still
+ * available, but add() and erase() are overridden.
+ * This way you can construct the graph with static node ids without worrying
+ * about the id pool.
+ */
+class SimpleStaticGraph : public SimpleGraph
+{
+public:
+    SimpleStaticGraph(const SimpleStaticGraph&) = delete;
+    SimpleStaticGraph(SimpleStaticGraph&&) = delete;
+    SimpleStaticGraph(Estd::Vec<int> node_ids, std::map<int,Estd::Vec<int>> adjacent)
+    {
+        for(auto& n : node_ids)
+        {
+            _add_node(std::move(std::make_unique<GraphNode>(n)),false);
+        }
+        _adjacent = adjacent;
+        traverse_graph();
+    }
+    virtual int add(bool traverse) override {return -1;}
+    virtual void erase(int id, bool traverse) override {}
+};
+
 
 /*
  * VertexGraph implements AbstractGraph and provides additional
@@ -581,6 +643,11 @@ public:
     {
         _delete_node(id,traverse);
     }
+    Coordinate2 pos(int id)
+    {
+        return _get_node(id).get_pos();
+    }
+
 
 private:
     bool _on_edge(int id, Edge edge)
@@ -592,7 +659,6 @@ private:
         if(distance_from_line(p1,p2,p3) < tol) return true;
         return false;
     }
-
 };
 
 

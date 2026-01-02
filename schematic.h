@@ -15,29 +15,34 @@
 class Schematic
 {
 public:
+    using Wire = std::pair<int,int>;  // id1,id2
     std::string name;
     Schematic() : name{"default"} {}
     Schematic(std::string name) : name{name} {}
 
-    void add_wire(Coordinate2 a, Coordinate2 b, bool traverse=true);
-    std::string get_netname(int wid);
-    Estd::Vec<int> select_net(std::string netname);
-    bool remove_wire(int wid);
-    Estd::Vec<int> select_net(Coordinate2 p, bool traverse=true);
-    Estd::Vec<std::string> get_netnames();
+    Estd::Vec<Wire> get_all_wires() { return _graph.get_all_edges(); }
+    Wire add_wire(Coordinate2 a, Coordinate2 b, bool traverse=true);
+    Estd::Vec<std::string> get_all_netnames();
+    std::string get_netname(Wire w);
+    Estd::Vec<Wire> select_net(std::string netname);
+    Estd::Vec<Wire> select_net(Coordinate2 p);
+    Wire select_wire(Coordinate2 p);
+    bool remove_wire(Wire w, bool traverse=true);
     int add_port_node(Coordinate2 p);
     int select_port_node(Coordinate2 p);
     bool remove_port_node(int pid);
     void print();
 
-    void update_nets(int vid1=-1,int vid2=-1);
+    void update_nets(int vhint1=-1,int vhint2=-1);
 
 private:
-    Estd::Vec<std::pair<int,int>> _wires;  // edges in current schematic
+    Estd::Vec<Wire> _wires;  // edges in current schematic
     VertexGraph _graph;
-    std::map<std::string,Estd::Vec<int>> _nets;  // map of netname -> graphnodes
-    Estd::Vec<Estd::Vec<int>> _trees;      // spanning trees
+    std::map<std::string,Estd::Vec<Wire>> _nets;  // map of netname -> wires
+    Estd::Vec<Estd::Vec<int>> _vtrees;      // spanning trees of vertices
+    Estd::Vec<Estd::Vec<Wire>> _etrees;
     void _update_trees();                  // reprocess spanning trees
 };
+
 
 #endif // SCHEMATIC_H

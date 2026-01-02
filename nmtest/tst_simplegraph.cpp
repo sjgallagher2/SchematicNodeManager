@@ -322,14 +322,43 @@ TEST_F(SimpleGraphTestFixtureWithNodes, SimpleGraphGetEdgeListReturnsCorrect)
     expected.push_back(pair<int,int>(4,6));
     expected.push_back(pair<int,int>(4,7));
     expected.push_back(pair<int,int>(6,7));
-    EXPECT_EQ(graph.get_edge_list(),expected);
+    EXPECT_EQ(graph.get_all_edges(),expected);
 
     expected.clear();
     expected.push_back(pair<int,int>(1,3));
     expected.push_back(pair<int,int>(2,3));
     expected.push_back(pair<int,int>(6,7));
     graph.erase(id4);
-    EXPECT_EQ(graph.get_edge_list(),expected);
+    EXPECT_EQ(graph.get_all_edges(),expected);
+}
+
+TEST_F(SimpleGraphTestFixtureWithNodes, SimpleGraphSpanningTreesAreCorrect)
+{
+    using Estd::Vec;
+    Vec<Vec<int>> expected;
+    expected.push_back({id0});
+    expected.push_back({id1,id3,id2,id4,id5,id6,id7});
+    EXPECT_EQ(expected,graph.get_spanning_trees());
+
+    graph.erase(id4);
+
+    expected.clear();
+    expected.push_back({id0});
+    expected.push_back({id1,id3,id2});
+    expected.push_back({id5});
+    expected.push_back({id6,id7});
+    EXPECT_EQ(expected,graph.get_spanning_trees());
+}
+
+TEST_F(SimpleGraphTestFixtureWithNodes, SimpleGraphGetSubgraphReturnsStatic)
+{
+    Estd::Vec<int> subnodes {1,2,3};
+    auto sub1_adj = graph.get_sub_adjacency_lists(subnodes);
+    SimpleStaticGraph sub1(subnodes,sub1_adj);
+    EXPECT_TRUE(sub1.reachable(id1,id2));
+    EXPECT_TRUE(sub1.reachable(id1,id3));
+    EXPECT_TRUE(sub1.reachable(id2,id3));
+    EXPECT_THROW(sub1.reachable(id1,id4),std::invalid_argument);
 }
 
 TEST_F(VertexGraphTestFixtureWithVertices, VertexGraphAddNodeOnEdgeSplitsEdge)
