@@ -19,13 +19,15 @@ enum class WireType
 
 /* Schematic class for managing wires and ports on a schematic.
  *
- * NOTE: Ports CANNOT have integer numbers for names. Besides, why would you do that?
- *
  * Usage: A Schematic has a name, a collection of Wire objects, and a collection of
  * Port objects. Add wires with `add_wire()`. If traverse==true, this call automatically
  * runs `update_nets()`. Wires are identified by the internal vertex id's of their
- * endpoints. Because adding or removing a wire can substantially change the graph
- * interconnections, a Wire should be considered _invalid_ after changes to the schematic.
+ * endpoints. Because adding or removing a wire can change the graph interconnections,
+ * a Wire should be considered _invalid_ after any changes to the schematic.
+ *
+ * Ports are used to override the netname of a net. They do not interact with wires
+ * directly, but they have positions and will rename the net names for any wire they
+ * overlap. This is handled in `update_nets()`. Ports must have non-integer names.
  *
  */
 class Schematic
@@ -38,23 +40,25 @@ public:
     Schematic() : name{"default"} {}
     Schematic(std::string name) : name{name} {}
 
+    // wire and net methods
     Estd::Vec<Wire> get_all_wires() { return _graph.get_all_edges(); }
     Estd::Vec<std::string> get_all_netnames();
     Wire add_wire(Coordinate2 a, Coordinate2 b, bool traverse=true);
     std::string get_netname(Wire w);
-    bool set_netname(Wire w);
     Estd::Vec<Wire> select_net(std::string netname);
     Estd::Vec<Wire> select_net(Coordinate2 p);
     Wire select_wire(Coordinate2 p);
     Estd::Vec<Wire> select_wires(Coordinate2 p);
     bool remove_wire(Wire w, bool traverse=true);
+    void update_nets();
+
+    // port methods
     int add_port_node(Coordinate2 p,std::string port_name);
     int add_port_node(Port port);
     int select_port_node(Coordinate2 p);
     int select_port_node(std::string port_name);
     bool remove_port_node(int pid);
     bool remove_port_node(std::string port_name);
-    void update_nets();
 
     void print();
 

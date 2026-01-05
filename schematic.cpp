@@ -225,55 +225,6 @@ bool Schematic::remove_wire(Wire w, bool traverse)
     return true;
 }
 
-template <typename T>
-void print_Vec(const string&& name, const Estd::Vec<T>& v)
-{
-    if(v.size() == 0) cout << name << " = []\n";
-    else
-    {
-        cout << name << " = [";
-        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
-        cout << v.back() << "]\n";
-    }
-}
-
-template <typename T>
-void print_Vec(const string& name, const Estd::Vec<T>& v)
-{
-    if(v.size() == 0) cout << name << " = []\n";
-    else
-    {
-        cout << name << " = [";
-        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
-        cout << v.back() << "]\n";
-    }
-}
-void print_Wire(const Wire& w, const Coordinate2& a, const Coordinate2& b)
-{
-    cout << "\t{"<<w.first<<", "<<w.second<<"}\t = \t";
-    cout << "{("<<a.x<<","<<a.y<<"), ("<<b.x<<","<<b.y<<")}\n";
-}
-
-void Schematic::print()
-{
-    update_nets();
-
-    // print nets
-    for(auto& pair : _nets)
-    {
-        cout << "******************\n";
-        cout << "Net name: " << pair.first << endl;
-        cout << "Wires: \n";
-        Coordinate2 a,b;
-        for(auto& w : pair.second)
-        {
-            a = _graph.pos(w.first);
-            b = _graph.pos(w.second);
-            print_Wire(w,a,b);
-        }
-    }
-}
-
 bool netname_is_int(const string& name)
 {
     return !name.empty() && std::all_of(name.begin(), name.end(), ::isdigit);
@@ -335,6 +286,55 @@ void Schematic::update_nets()
     }
 
     _nets = nets_new;
+}
+
+template <typename T>
+void print_Vec(const string&& name, const Estd::Vec<T>& v)
+{
+    if(v.size() == 0) cout << name << " = []\n";
+    else
+    {
+        cout << name << " = [";
+        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
+        cout << v.back() << "]\n";
+    }
+}
+
+template <typename T>
+void print_Vec(const string& name, const Estd::Vec<T>& v)
+{
+    if(v.size() == 0) cout << name << " = []\n";
+    else
+    {
+        cout << name << " = [";
+        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
+        cout << v.back() << "]\n";
+    }
+}
+void print_Wire(const Wire& w, const Coordinate2& a, const Coordinate2& b)
+{
+    cout << "\t{"<<w.first<<", "<<w.second<<"}\t = \t";
+    cout << "{("<<a.x<<","<<a.y<<"), ("<<b.x<<","<<b.y<<")}\n";
+}
+
+void Schematic::print()
+{
+    update_nets();
+
+    // print nets
+    for(auto& pair : _nets)
+    {
+        cout << "******************\n";
+        cout << "Net name: " << pair.first << endl;
+        cout << "Wires: \n";
+        Coordinate2 a,b;
+        for(auto& w : pair.second)
+        {
+            a = _graph.pos(w.first);
+            b = _graph.pos(w.second);
+            print_Wire(w,a,b);
+        }
+    }
 }
 
 /*
