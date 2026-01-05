@@ -145,26 +145,41 @@ TEST_F(SchematicTestFixture, SchematicAddWireReturnsValidWire)
     EXPECT_NO_THROW(sch.get_netname(w1));  // make sure w1 (which shares 0,0) is unchanged
 
     // Partially degenerate wire, one wire extends another
+    // w9_1 should not be invalid, but it is no longer a Wire
+    // Instead, the wire should be w1.first,w9_1.second
     Wire w9_1 = sch.add_wire(Coordinate2(0,5),Coordinate2(0,6));
-    EXPECT_NO_THROW(sch.get_netname(w9_1));
     EXPECT_NE(w9_1,Schematic::INVALID_WIRE);
-    sch.print();
+    EXPECT_THROW(sch.get_netname(w9_1),std::invalid_argument);
+    EXPECT_NO_THROW(sch.get_netname(Wire{w1.first,w9_1.second}));
 
-    // Partially degenerate wire, one wire completely contains another
+    // Partially degenerate wire, one wire completely subsumes another
     Wire w9_2 = sch.add_wire(Coordinate2(0,0),Coordinate2(0,7));
     EXPECT_NO_THROW(sch.get_netname(w9_2));
     EXPECT_NE(w9_2,Schematic::INVALID_WIRE);
-    sch.print();
 
-    // // Partially degenerate wire, one wire partially overlaps another
-    // Wire w9_3 = sch.add_wire(Coordinate2(0,3),Coordinate2(0,8));
-    // EXPECT_NO_THROW(sch.get_netname(w9_3));
-    // EXPECT_NE(w9_3,Schematic::INVALID_WIRE);
+    // Partially degenerate wire, one wire partially overlaps another
+    Wire w9_3 = sch.add_wire(Coordinate2(0,3),Coordinate2(0,8));
+    EXPECT_THROW(sch.get_netname(w9_3),std::invalid_argument);
+    EXPECT_NO_THROW(sch.get_netname(Wire{w1.first,w9_3.second}));
+    EXPECT_NE(w9_3,Schematic::INVALID_WIRE);
 
-    // // Adding wire that gets split in its middle
-    // // [split by (0,0)]
-    // Wire w10 = sch.add_wire(Coordinate2(-1,-1),Coordinate2(0.5,0.5));
-    // EXPECT_THROW(sch.get_netname(w10),std::invalid_argument); // This should have been split
+    //  Partially degenerate wire, the new wire subsumes multiple other wires
+    Wire w9_4 = sch.add_wire({-5,-10},{-3,-10},false);
+    Wire w9_5 = sch.add_wire({-2,-10},{-1,-10},false);
+    Wire w9_6 = sch.add_wire({0,-10},{2,-10},false);
+    Wire w9_7 = sch.add_wire({3,-10},{5,-10},false);
+    Wire w9_8 = sch.add_wire({-8,-10},{10,-10},true);
+    // w9_8 subsumes all the others
+    EXPECT_NO_THROW(sch.get_netname(w9_8));
+    EXPECT_THROW(sch.get_netname(w9_4),std::invalid_argument);
+    EXPECT_THROW(sch.get_netname(w9_5),std::invalid_argument);
+    EXPECT_THROW(sch.get_netname(w9_6),std::invalid_argument);
+    EXPECT_THROW(sch.get_netname(w9_7),std::invalid_argument);
+
+    // Adding wire that gets split in its middle
+    // [split by (0,0)]
+    Wire w10 = sch.add_wire(Coordinate2(-1,-1),Coordinate2(0.5,0.5));
+    EXPECT_THROW(sch.get_netname(w10),std::invalid_argument); // This should have been split
 
 
 }

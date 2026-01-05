@@ -118,6 +118,47 @@ protected:
     int id0,id1,id2,id3,id4,id5,id6,id7,id8;
 };
 
+class VertexGraphTestFixtureWithDegenerates : public Test
+{
+protected:
+    VertexGraph graph;
+    VertexGraphTestFixtureWithDegenerates() {
+        id0  = graph.add({ 0, 0},false);
+        id1  = graph.add({ 0, 1},false);  // degen
+        id2  = graph.add({ 0, 2},false);  // degen
+        id3  = graph.add({ 0, 3},false);
+        id4  = graph.add({ 1, 3},false);  // degen
+        id5  = graph.add({ 2, 3},false);  // degen
+        id6  = graph.add({ 3, 3},false);
+        id7  = graph.add({ 4, 3},false);
+        id8  = graph.add({ 3, 2},false);
+        id9  = graph.add({ 3, 0},false);
+        id10 = graph.add({ 4, 0},false);
+        id11 = graph.add({ 5, 0},false);  // degen
+        id12 = graph.add({ 6, 0},false);  // degen
+        id13 = graph.add({ 7, 0},false);  // degen
+        id14 = graph.add({ 8, 0},false);
+        id15 = graph.add({ 9, 0},false);
+
+        graph.connect(id0 ,id1 ,false);
+        graph.connect(id1 ,id2 ,false);
+        graph.connect(id2 ,id3 ,false);
+        graph.connect(id3 ,id4 ,false);
+        graph.connect(id4 ,id5 ,false);
+        graph.connect(id5 ,id6 ,false);
+        graph.connect(id6 ,id7 ,false);
+        graph.connect(id6 ,id8 ,false);
+        graph.connect(id8 ,id9 ,false);
+        graph.connect(id8 ,id10,false);
+        graph.connect(id9 ,id10,false);
+        graph.connect(id10,id11,false);
+        graph.connect(id11,id12,false);
+        graph.connect(id12,id13,false);
+        graph.connect(id13,id14,true );
+    }
+    int id0,id1,id2,id3,id4,id5,id6,id7,id8,id9,id10,id11,id12,id13,id14,id15;
+};
+
 
 // First test the supporting id pool data structure
 TEST(GraphIdPoolSuite, TestGraphIdPoolFunctionality)
@@ -417,3 +458,32 @@ TEST_F(VertexGraphTestFixtureWithVertices, VertexGraphConnectNodesCollinearAndNo
     EXPECT_TRUE(graph.adjacent(id4,id2));
 }
 
+TEST_F(VertexGraphTestFixtureWithDegenerates,VertexGraphMergeCollinearNodes)
+{
+    // Calling merge_unbranched_collinear_edges should remove id1, id2, id4, id5,
+    // id11, id12, and id13
+    graph.merge_unbranched_collinear_edges();
+
+    Estd::Vec<int> allids = graph.get_all_ids();
+    EXPECT_THAT(allids,Contains(id0));
+    EXPECT_THAT(allids,Contains(id3));
+    EXPECT_THAT(allids,Contains(id6));
+    EXPECT_THAT(allids,Contains(id7));
+    EXPECT_THAT(allids,Contains(id8));
+    EXPECT_THAT(allids,Contains(id9));
+    EXPECT_THAT(allids,Contains(id10));
+    EXPECT_THAT(allids,Contains(id14));
+
+    EXPECT_THAT(allids,Not(Contains(id1)));
+    EXPECT_THAT(allids,Not(Contains(id2)));
+    EXPECT_THAT(allids,Not(Contains(id4)));
+    EXPECT_THAT(allids,Not(Contains(id5)));
+    EXPECT_THAT(allids,Not(Contains(id11)));
+    EXPECT_THAT(allids,Not(Contains(id12)));
+    EXPECT_THAT(allids,Not(Contains(id13)));
+
+    // Verify new connections
+    EXPECT_TRUE(graph.adjacent(id0,id3));
+    EXPECT_TRUE(graph.adjacent(id3,id6));
+    EXPECT_TRUE(graph.adjacent(id10,id14));
+}

@@ -69,6 +69,7 @@ private:
     Estd::Vec<Estd::Vec<Wire>> _etrees;
     void _update_trees();                  // reprocess spanning trees
     WireType _degenerate(Coordinate2 a,Coordinate2 b,Wire& deg);
+    void _remove_degenerate_wires();
 
     IdPool _idpool;
 };

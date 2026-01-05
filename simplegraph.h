@@ -648,6 +648,16 @@ public:
         return _get_node(id).get_pos();
     }
 
+    // Merge a chain of unbranching collinear edges into a single edge
+    // Only performs a check on a single spanning tree, `treeid`.
+    void merge_unbranched_collinear_edges()
+    {
+        /* To check for unbranching collinear edges, iterate over the nodes
+         * in the spanning tree.
+         */
+        while(_remove_one_degenerate_node());
+        _traverse_graph();
+    }
 
 private:
     bool _on_edge(int id, Edge edge)
@@ -657,6 +667,35 @@ private:
         Coordinate2 p3 = _get_node(edge.second).get_pos();
         double tol = p1.prec();
         if(distance_from_line(p1,p2,p3) < tol) return true;
+        return false;
+    }
+
+    bool _remove_one_degenerate_node()
+    {
+        /* For each node, check if it has exactly two (2) adjacent nodes. If
+         * it does, check if those three are collinear. If they are, mark the
+         * center node as degenerate.
+         *
+         * When a degenerate node is found, remove it and connect its adjacent nodes,
+         * and return true. Else return false.
+         */
+        for(auto& n : _nodes)
+        {
+            int id1 = n->get_id();
+            Estd::Vec<int> adj = _adjacent[id1];
+            if(adj.size() == 2)
+            {
+                Coordinate2 p1 = _get_node(id1).get_pos();
+                Coordinate2 p2 = _get_node(adj[0]).get_pos();
+                Coordinate2 p3 = _get_node(adj[1]).get_pos();
+                if(collinear(p1,p2,p3))
+                {
+                    _delete_node(id1,false); // no need to traverse
+                    _connect_nodes(adj[0],adj[1],false);
+                    return true;
+                }
+            }
+        }
         return false;
     }
 };

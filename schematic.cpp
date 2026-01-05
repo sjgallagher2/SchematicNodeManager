@@ -46,38 +46,18 @@ Wire Schematic::add_wire(Coordinate2 a, Coordinate2 b, bool traverse)
     Wire wdeg = Schematic::INVALID_WIRE;
     WireType degen = _degenerate(a,b,wdeg);
     if(degen == WireType::WIRE_DEGENERATE) {return Schematic::INVALID_WIRE;}
-    else if(degen == WireType::WIRE_PARTIAL_DEGEN_A)
-    {
-        // `a` was on the wire, replace it with endpoint farthest from `b`
-        Coordinate2 wp1 = _graph.pos(wdeg.first);
-        Coordinate2 wp2 = _graph.pos(wdeg.second);
-        double dist1 = b.distance(wp1);
-        double dist2 = b.distance(wp2);
-        if(dist1 > dist2) {a = wp1;}
-        else if(dist1 < dist2) {a = wp2;}
-        else {throw std::logic_error("External point is equidistant from collinear endpoints! This shouldn't happen.");}
-        // Remove existing wire, we'll replace it
-        remove_wire(wdeg,false);
-    }
-    else if(degen == WireType::WIRE_PARTIAL_DEGEN_B)
-    {
-        // `b` was on the wire, replace it with endpoint farthest from `a`
-        Coordinate2 wp1 = _graph.pos(wdeg.first);
-        Coordinate2 wp2 = _graph.pos(wdeg.second);
-        double dist1 = a.distance(wp1);
-        double dist2 = a.distance(wp2);
-        if(dist1 > dist2) {b = wp1;}
-        else if(dist1 < dist2) {b = wp2;}
-        else {throw std::logic_error("External point is equidistant from collinear endpoints! This shouldn't happen.");}
-        // Remove existing wire, we'll replace it
-        remove_wire(wdeg,false);
-    }
 
     // Now do the normal adding procedure
     int id1 = _graph.add(a,false);
     int id2 = _graph.add(b,false);
     _graph.connect(id1,id2,false);
-    if(traverse) update_nets();  // calls traverse_graph()
+    if(traverse)
+    {
+        _remove_degenerate_wires();  // This is a one-and-done method for updating.
+        // Handles degenerate wires, and calls update_nets(), which in turn
+        // calls _update_trees().
+    }
+
     return {id1,id2};
 }
 
@@ -104,56 +84,16 @@ WireType Schematic::_degenerate(Coordinate2 a,Coordinate2 b,Wire& deg)
         }
     }
 
-    // Next check for a partially degenerate wire. This is when only one point
-    // is on an existing wire, and the two points a,b are collinear with both
-    // endpoints of the existing wire.
-    // NOTE: If we selected via an endpoint, then select_wire will
-    // only return the first wire found. We want to check _all wires_
-    // under the point.
-    if(w1 != w2)
-    {
-        // Exactly one wire is not INVALID_WIRE
-        Vec<Wire> wires_under;
-        bool was_a = false;
-        if(w1 != Schematic::INVALID_WIRE)
-        {
-            // `a` was on wire
-            // Get list of all wires under `a`
-            wires_under = select_wires(a);
-            was_a = true;
-        }
-        else
-        {
-            // `b` was on wire
-            // Get list of all wires under `b`
-            wires_under = select_wires(b);
-        }
-
-        for(auto& w0 : wires_under)
-        {
-            // w0 is the partially overlapped wire, check for collinearity
-            Coordinate2 wp1 = _graph.pos(w0.first);
-            Coordinate2 wp2 = _graph.pos(w0.second);
-            if(collinear(a,b,wp1) && collinear(a,b,wp2))
-            {
-                // Partially degenerate wire detected
-                // Replace point not on wire with closest endpoint of wire
-                if(was_a)
-                {
-                    // `a` was on the wire
-                    deg = w0;
-                    return WireType::WIRE_PARTIAL_DEGEN_A;
-                }
-                else
-                {
-                    // `b` was on the wire
-                    deg = w0;
-                    return WireType::WIRE_PARTIAL_DEGEN_B;
-                }
-            }
-        }
-    }
     return WireType::WIRE_NORMAL;
+}
+
+/* Remove any degenerate wires (collinear non-branching wires).
+ * Always calls update_nets().
+ */
+void Schematic::_remove_degenerate_wires()
+{
+    _graph.merge_unbranched_collinear_edges();
+    update_nets();
 }
 
 string Schematic::get_netname(Wire w)
