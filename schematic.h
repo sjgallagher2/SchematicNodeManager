@@ -53,21 +53,21 @@ public:
     void update_nets();
 
     // port methods
-    int add_port_node(Coordinate2 p,std::string port_name);
-    int add_port_node(Port port);
-    int select_port_node(Coordinate2 p);
-    int select_port_node(std::string port_name);
-    bool remove_port_node(int pid);
-    bool remove_port_node(std::string port_name);
+    int add_port_node(Port port, bool traverse=true);
+    int select_port_node(Coordinate2 p) const;
+    Estd::Vec<int> select_port_nodes(std::string port_name) const;
+    void remove_port_node(int pid, bool traverse=true);
+    void remove_port_nodes(std::string port_name, bool traverse=true);
 
     void print();
 
 private:
     VertexGraph _graph;
-    std::map<std::string,Estd::Vec<Wire>> _nets;  // map of netname -> wires
+    std::multimap<std::string,Estd::Vec<Wire>> _nets;  // map of netname -> wires
     Estd::Vec<Estd::Vec<int>> _vtrees;      // spanning trees of vertices
     Estd::Vec<Estd::Vec<Wire>> _etrees;
-    void _update_trees();                  // reprocess spanning trees
+    Estd::Vec<Port> _ports;                 // ports (name and position)
+    void _update_trees();                   // reprocess spanning trees
     WireType _degenerate(Coordinate2 a,Coordinate2 b,Wire& deg);
     void _remove_degenerate_wires();
 

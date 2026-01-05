@@ -4,6 +4,8 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>  // iota
+#include <string>
+#include <cctype>  // toupper
 
 // See also this example lib: https://github.com/OSSIA/libossia/blob/v3/OSSIA/ossia/detail/algorithms.hpp
 
@@ -55,10 +57,10 @@ template <typename C, typename Pred>
 auto find_if(C& c, Pred p){return std::find_if(std::begin(c), std::end(c), p);}
 
 // Return vector of sorted indices based on `v`. Does not modify v.
-using std::vector;
 template<typename T>
-vector<size_t> argsort(const vector<T>& v)
+std::vector<size_t> argsort(const std::vector<T>& v)
 {
+    using std::vector;
     // Initialize with original indices
     vector<size_t> idx(v.size());
     std::iota(idx.begin(),idx.end(),0);
@@ -71,6 +73,14 @@ vector<size_t> argsort(const vector<T>& v)
     return idx;
 }
 
+inline void to_upper(std::string& str)
+{
+    std::transform(str.begin(),str.end(),str.begin(),::toupper);
+}
+inline void to_lower(std::string& str)
+{
+    std::transform(str.begin(),str.end(),str.begin(),::tolower);
+}
 
 }  // namespace Estd
 

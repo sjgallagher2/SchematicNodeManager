@@ -8,6 +8,7 @@ using std::cout;
 using std::endl;
 
 using std::map;
+using std::multimap;
 using std::string;
 using std::set;
 using Estd::Vec;
@@ -113,11 +114,21 @@ string Schematic::get_netname(Wire w)
 
 Vec<Wire> Schematic::select_net(string netname)
 {
-    try {
-        return _nets.at(netname);
-    } catch (std::out_of_range) {
-        throw std::invalid_argument("No net with given name.");
+    // _nets is a multimap, so collect all the trees for this netname
+    // if none, throw invalid_argument
+
+    Vec<Wire> selected;
+    auto[range_start,range_end] = _nets.equal_range(netname);
+    if(range_start == _nets.end()) {throw std::invalid_argument("Net name was not found in schematic.");}
+
+    for(auto& itr = range_start; itr != range_end; ++itr)
+    {
+        for(auto w : itr->second)
+        {
+            selected.push_back(w);
+        }
     }
+    return selected;
 }
 
 /* Return a Wire sufficiently close to point `p`, or (-1,-1) if none found.
@@ -181,7 +192,7 @@ void Schematic::update_nets()
     // Remove _nets keys that don't correspond to existing spanning trees
     // If any spanning tree is not a value in _nets, give it a new name, checking
     // for ports
-    map<string,Vec<Wire>> nets_new;
+    multimap<string,Vec<Wire>> nets_new;
     std::set<int> ok_trees;
     std::set<string> ok_nets;
     _update_trees();
@@ -191,21 +202,20 @@ void Schematic::update_nets()
         {
             if(nm.second == _etrees[treeid])
             {
-                nets_new[nm.first] = nm.second;
+                nets_new.insert(nm);
                 ok_trees.insert(treeid);
                 ok_nets.insert(nm.first);
                 break;
             }
         }
     }
-    // Any nets not in `ok_nets` can be removed and (if integer)
-    // added back to the id pool
+    // Any nets not in `ok_nets` can be removed (i.e. not added back) and,
+    // if integer, added back to the id pool
     for(auto& pair : _nets)
     {
         if(ok_nets.find(pair.first) == ok_nets.end())
         {
             // See if name is a plain number, and if so, add back to pool
-            // NOTE: This means we CANNOT allow users to set numerical net names
             if(netname_is_int(pair.first))
             {
                 int netnum = std::stoi(pair.first);
@@ -219,13 +229,143 @@ void Schematic::update_nets()
         if(ok_trees.find(treeid) == ok_trees.end())
         {
             // Rename net
-            int net_num = _idpool.get();
-            string net_name = std::to_string(net_num);
-            nets_new[net_name] = _etrees[treeid];
+            // First check for ports
+            bool has_port = false;
+            for(auto& p : _ports)
+            {
+                // get first matching wire
+                Wire port_wire = select_wire(p.first);
+                if(port_wire != Schematic::INVALID_WIRE) {
+                    // Check if this wire is in the current tree
+                    if(contains(_etrees[treeid],port_wire)) {
+                        // Port is connected to this tree
+                        nets_new.insert({p.second, _etrees[treeid]});
+                        has_port = true;
+                        break;  // stop looking for ports
+                    }
+                }
+            }
+
+            if(!has_port)
+            {
+                // Otherwise, use default name
+                int net_num = _idpool.get();
+                string net_name = std::to_string(net_num);
+                nets_new.insert({net_name, _etrees[treeid]});
+            }
         }
     }
 
     _nets = nets_new;
+}
+
+/* Add a new port node.
+ * The port name cannot be an integer.
+ * Ports must have unique positions, but they do NOT need unique names (e.g. GND).
+ * Port names are case-insensitive.
+ */
+int Schematic::add_port_node(Port port, bool traverse)
+{
+    // Check name
+    if(netname_is_int(port.second)) {return -1;}
+    // Check for duplicate ports
+    for(int i=0; i<_ports.size(); i++)
+    {
+        if(_ports[i].first == port.first) { return i; }
+    }
+
+    // Add port
+    Estd::to_lower(port.second);  // by reference
+    _ports.push_back(port);
+
+    // Remove any trees from _nets to force refactor
+    Wire pw = select_wire(port.first);
+    if(pw != Schematic::INVALID_WIRE)
+    {
+        // This port overlaps a wire
+        // Remove its tree from _nets
+        try{
+            string netname = get_netname(pw);
+            if(_nets.find(netname) != _nets.end())
+            {
+                // Return netname to pool if integer
+                if(netname_is_int(netname))
+                {
+                    int netnum = std::stoi(netname);
+                    _idpool.put_back(netnum);
+                }
+                auto[range_start,range_end] = _nets.equal_range(netname);
+                _nets.erase(range_start,range_end);
+            }
+        } catch(std::invalid_argument){}
+    }
+
+    if(traverse) update_nets();
+    return _ports.size()-1;  // last element
+}
+
+/*
+ * Return the index of a port sufficiently close to `p`, or -1 if none found.
+ */
+int Schematic::select_port_node(Coordinate2 p) const
+{
+    for(int i=0; i<_ports.size(); i++)
+    {
+        if(_ports[i].first == p)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/*
+ * Return indices of all ports with the name `port_name`, or empty Vec if none.
+ */
+Vec<int> Schematic::select_port_nodes(std::string port_name) const
+{
+    Vec<int> selected;
+    for(int i=0; i<_ports.size(); i++)
+    {
+        if(_ports[i].second == port_name) {selected.push_back(i);}
+    }
+    return selected;
+}
+
+void Schematic::remove_port_node(int pid, bool traverse)
+{
+    try{
+        // erase port from `_ports`
+        _ports.erase(_ports.begin()+pid);
+        // remove entries in `_nets`
+        // Note: this is aggressive, but update_nets() will rename any that
+        // still have this name
+        string netname = _ports[pid].second;
+        auto[range_start,range_end] = _nets.equal_range(netname);
+        _nets.erase(range_start,range_end);
+        if(traverse) {update_nets();}
+    }catch(std::out_of_range){
+        throw std::invalid_argument("Port node not found in Schematic.");
+    }
+}
+
+/*
+ * Remove all port nodes with name `port_name`. Do nothing if none found.
+ */
+void Schematic::remove_port_nodes(std::string port_name, bool traverse)
+{
+    // Remove any ports with this name from _ports
+    Vec<Port> new_ports;
+    for(auto& p : _ports)
+    {
+        if(p.second != port_name) {new_ports.push_back(p);}
+    }
+    _ports = new_ports;
+
+    // Remove entries in _nets
+    auto[range_start,range_end] = _nets.equal_range(port_name);
+    _nets.erase(range_start,range_end);
+    if(traverse) {update_nets();}
 }
 
 template <typename T>
@@ -294,5 +434,9 @@ void Schematic::_update_trees()
         _etrees.push_back(subgraph.get_all_edges());
     }
 }
+
+
+
+
 
 
