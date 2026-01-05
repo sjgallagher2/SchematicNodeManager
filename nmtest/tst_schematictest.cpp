@@ -2,12 +2,15 @@
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include "../coordinate2.h"
 #include "../schematic.h"
 
 using namespace testing;
 using std::string;
 using std::vector;
+using std::pair;
+using Wire = std::pair<int,int>;
 
 class SchematicTestFixture : public Test
 {
@@ -17,38 +20,185 @@ protected:
     SchematicTestFixture() : sch{"My Schematic"}, sch_default{} {}
 };
 
+class SchematicTestFixtureWithWires : public Test
+{
+protected:
+    Schematic sch;
+    SchematicTestFixtureWithWires() : sch{"My Schematic"}
+    {
+        // net 1
+        sch.add_wire({16,  8}, {16, 13}, false);
+        sch.add_wire({16,  8}, {29,  8}, false);
+
+        // net 2
+        sch.add_wire({35,  8}, {45,  8}, false);
+        sch.add_wire({45,  8}, {45, 12}, false);
+
+        // net 3
+        sch.add_wire({45, 18}, {45, 26}, false);
+        sch.add_wire({34, 26}, {45, 26}, false);
+
+        // net 4
+        sch.add_wire({16, 26}, {19, 26}, false);
+        sch.add_wire({16, 19}, {16, 26}, false);
+        sch.add_wire({19, 26}, {25, 26}, false);
+        sch.add_wire({19, 26}, {19, 33}, false);
+        sch.add_wire({25, 26}, {28, 26}, false);
+        sch.add_wire({25, 26}, {25, 29}, false);
+        sch.add_wire({25, 29}, {39, 29}, false);
+        sch.add_wire({48, 29}, {48, 33}, false);
+        sch.add_wire({48, 39}, {48, 45}, false);
+        sch.add_wire({35, 45}, {39, 45}, false);
+        sch.add_wire({39, 29}, {48, 29}, false);
+        sch.add_wire({39, 45}, {48, 45}, false);
+        sch.add_wire({39, 29}, {39, 45}, false);
+
+        // net 5
+        sch.add_wire({19, 45}, {22, 45}, false);
+        sch.add_wire({19, 39}, {19, 42}, false);
+        sch.add_wire({19, 42}, {19, 45}, false);
+        sch.add_wire({12, 42}, {19, 42}, false);
+        sch.add_wire({12, 42}, {12, 51}, false);
+        sch.add_wire({12, 51}, {22, 51}, false);
+        sch.add_wire({22, 45}, {29, 45}, false);
+        sch.add_wire({22, 45}, {22, 51}, false);
+
+        // net 6
+        sch.add_wire({60, 26}, {60, 35}, false);
+        sch.add_wire({60, 35}, {63, 35}, false);
+        sch.add_wire({63, 30}, {63, 35}, false);
+        sch.add_wire({63, 30}, {77, 30}, false);
+        sch.add_wire({77, 26}, {77, 30}, false);
+
+        // net 7
+        sch.add_wire({77, 14}, {77, 20}, false);
+        sch.add_wire({60, 14}, {77, 14}, false);
+        sch.add_wire({60, 14}, {60, 20}, true);
+    }
+};
+
+
 TEST_F(SchematicTestFixture, SchematicNameDefaultAndSetInitialization)
 {
     EXPECT_EQ("default",sch_default.name);
     EXPECT_EQ("My Schematic",sch.name);
 }
 
-TEST_F(SchematicTestFixture, SchematicAddWireReturnsValidWireId)
+TEST_F(SchematicTestFixture, SchematicAddWireReturnsValidWire)
 {
-    int wid = sch.add_wire(Coordinate2(0,0),Coordinate2(0,5));
-    EXPECT_EQ(1, wid);  // Default wire id is 1
-    string netname = sch.get_netname(wid);
-    EXPECT_EQ("1",netname); // Default net name is "1"
-    vector<int> wids = sch.select_net(netname);
-    EXPECT_THAT(wids,ElementsAre(1));
+    // For for the first wire added, the wire is guaranteed to stay the same after adding
+    Wire w1 = sch.add_wire(Coordinate2(0,0),Coordinate2(0,5));
+    ASSERT_NE(w1,Schematic::INVALID_WIRE);
+    ASSERT_NO_THROW(sch.get_netname(w1));  // if w1 does not exist, this will throw
+    string net1 = sch.get_netname(w1);
+    EXPECT_THAT(sch.get_all_netnames(),Contains(net1));
+
+    // Add second wire on endpoint, should have same net
+    Wire w2 = sch.add_wire(Coordinate2(0,0),Coordinate2(5,0));
+    string net2 = sch.get_netname(w2);
+    EXPECT_EQ(net1,net2);
+
+    // Add third wire, isolated, should be a new net
+    Wire w3 = sch.add_wire(Coordinate2(1,1),Coordinate2(1,4));
+    string net3 = sch.get_netname(w3);
+    EXPECT_NE(net1,net3);
+
+    // Add fourth wire, isolated, do not traverse after adding
+    Wire w4 = sch.add_wire(Coordinate2(16,19),Coordinate2(17,20),false);
+    EXPECT_THROW(sch.get_netname(w4),std::invalid_argument);
+    sch.update_nets();
+    EXPECT_NO_THROW(sch.get_netname(w4));
+
+    // Add fifth wire, along length of w3, should split w3 and have same net
+    // So w3 should no longer be found
+    Wire w5 = sch.add_wire(Coordinate2(1,2.5),Coordinate2(3,2.5));
+    // w5 is still in tact
+    string net5 = sch.get_netname(w5);
+    EXPECT_EQ(net5,net3);
+    // w3 is split
+    EXPECT_THROW(sch.get_netname(w3),std::invalid_argument);
+    // New wire is w3.first and w5.first, hack it together
+    Wire w3_1(w3.first,w5.first);
+    Wire w3_2(w5.first,w3.second);
+    // These should be on the same net
+    EXPECT_NO_THROW(sch.get_netname(w3_1));
+    EXPECT_NO_THROW(sch.get_netname(w3_2));
+    string net3_1 = sch.get_netname(w3_1);
+    string net3_2 = sch.get_netname(w3_2);
+    EXPECT_EQ(net3_1,net3_2);
+    EXPECT_EQ(net3_1,net5);
+
+    // Adding degenerate wires
+    // Wire overlapping another (w5)
+    Wire w6 = sch.add_wire(Coordinate2(1,2.5),Coordinate2(3,2.5));
+    EXPECT_EQ(w5,w6);
+    // Wire degenerate on top of another (w2)
+    Wire w7 = sch.add_wire(Coordinate2(1,0),Coordinate2(4,0));
+    // A degenerate wire should not be added and should not change the
+    // schematic.
+    EXPECT_EQ(w7,Schematic::INVALID_WIRE);
+    EXPECT_THROW(sch.get_netname(w7),std::invalid_argument);
+    EXPECT_NO_THROW(sch.get_netname(w2));
+    // Wire of zero length
+    Wire w8 = sch.add_wire(Coordinate2(0,0),Coordinate2(0,0));
+    EXPECT_EQ(w8,Schematic::INVALID_WIRE);
+    EXPECT_NO_THROW(sch.get_netname(w1));  // make sure w1 (which shares 0,0) is unchanged
+
+    // Partially degenerate wire, one wire extends another
+    Wire w9_1 = sch.add_wire(Coordinate2(0,5),Coordinate2(0,6));
+    EXPECT_NO_THROW(sch.get_netname(w9_1));
+    EXPECT_NE(w9_1,Schematic::INVALID_WIRE);
+    sch.print();
+
+    // Partially degenerate wire, one wire completely contains another
+    Wire w9_2 = sch.add_wire(Coordinate2(0,0),Coordinate2(0,7));
+    EXPECT_NO_THROW(sch.get_netname(w9_2));
+    EXPECT_NE(w9_2,Schematic::INVALID_WIRE);
+    sch.print();
+
+    // // Partially degenerate wire, one wire partially overlaps another
+    // Wire w9_3 = sch.add_wire(Coordinate2(0,3),Coordinate2(0,8));
+    // EXPECT_NO_THROW(sch.get_netname(w9_3));
+    // EXPECT_NE(w9_3,Schematic::INVALID_WIRE);
+
+    // // Adding wire that gets split in its middle
+    // // [split by (0,0)]
+    // Wire w10 = sch.add_wire(Coordinate2(-1,-1),Coordinate2(0.5,0.5));
+    // EXPECT_THROW(sch.get_netname(w10),std::invalid_argument); // This should have been split
+
+
+}
+
+TEST_F(SchematicTestFixtureWithWires, SchematicAddWirePrintsCorrectTrees)
+{
+    // sch.print();
+    // sch.remove_wire({10,12});
+    // sch.print();
 }
 
 /*
-int wid = sch.add_wire(Coordinate2 a,Coordinate2 b);  // Add a wire by start,end
-bool status = sch.remove_wire(int wid);  // remove wire by id, false if fail
-int wid = sch.select_wire(Coordinate2 p);   // Return wire id or -1
-vector<int> wids = sch.select_net(string net_name);  // Return list of all
-// wires sharing the net name
-vector<int> wids = sch.select_net(Coordinate2 p, true);  // Find wire under
-// point, get all wires on its net, true=traverse port nodes
-vector<int> wids = sch.select_net(Coordinate2 p, false);  // Find wire under
-// point, get all wires on its net, false=don't traverse port nodes
-vector<string> netnames = sch.get_netnames();  // Get all net names in sch
-int pid = sch.add_port_node(Coordinate2 p);    // Add a port node at p
-int pid = sch.select_port_node(Coordinate2 p); // Find a port node around p
-sch.remove_port_node(int pid);  // Remove port node with id `pid`
-sch.print();  // Print a netlist
+int wid = sch.add_wire(Coordinate2 a,Coordinate2 b);    // Add a wire by start,end
+bool status = sch.remove_wire(int wid);                 // Remove wire by id, false if fail
+int wid = sch.select_wire(Coordinate2 p);               // Return wire id or -1
+vector<int> wids = sch.select_net(string net_name);     // Return list of all wires
+                                                        //sharing the net name
+vector<int> wids = sch.select_net(Coordinate2 p, true); // Find wire under point, get
+                                                        //all wires on its net,
+                                                        //true=traverse port nodes
+vector<int> wids = sch.select_net(Coordinate2 p, false);// Find wire under point, get
+                                                        //all wires on its net,
+                                                        //false=don't traverse port
+                                                        //nodes
+vector<string> netnames = sch.get_netnames();           // Get all net names in sch
+int pid = sch.add_port_node(Coordinate2 p);             // Add a port node at p
+int pid = sch.select_port_node(Coordinate2 p);          // Find a port node around p
+sch.remove_port_node(int pid);                          // Remove port node with id `pid`
+sch.print();                                            // Print a netlist
 
-sch.is_connected(int wid1, int wid2); // true if wid2 is reachable from wid1
-sch.count_leaves(string netname);     // return number of leaf nodes in tree
+sch.is_connected(int wid1, int wid2);                   // true if wid2 is reachable
+                                                        //from wid1
+sch.count_leaves(string netname);                       // return number of leaf
+                                                        //nodes in tree
 */
+
+

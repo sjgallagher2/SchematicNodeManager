@@ -17,6 +17,7 @@ add_executable(NodeManager
   coordinate2.h
   schematic.h schematic.cpp
   simplegraph.h simplegraph.cpp
+  utils.h
 )
 target_link_libraries(NodeManager PRIVATE Qt${QT_VERSION_MAJOR}::Core)
 
@@ -24,6 +25,7 @@ add_library(NodeManagerCore
   coordinate2.h
   schematic.h schematic.cpp
   simplegraph.h simplegraph.cpp
+  utils.h
 )
 
 include(GNUInstallDirs)
