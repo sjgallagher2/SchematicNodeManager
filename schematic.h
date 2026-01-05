@@ -8,42 +8,64 @@
 #include "utils.h"
 
 
+enum class WireType
+{
+    WIRE_NORMAL,
+    WIRE_DEGENERATE,
+    WIRE_PARTIAL_DEGEN_A,  // Wire is partially degenerate because A is on the wire
+    WIRE_PARTIAL_DEGEN_B   // Wire is partially degenerate because B is on the wire
+};
+
+
 /* Schematic class for managing wires and ports on a schematic.
  *
  * NOTE: Ports CANNOT have integer numbers for names. Besides, why would you do that?
  *
+ * Usage: A Schematic has a name, a collection of Wire objects, and a collection of
+ * Port objects. Add wires with `add_wire()`. If traverse==true, this call automatically
+ * runs `update_nets()`. Wires are identified by the internal vertex id's of their
+ * endpoints. Because adding or removing a wire can substantially change the graph
+ * interconnections, a Wire should be considered _invalid_ after changes to the schematic.
+ *
  */
-
 class Schematic
 {
 public:
     using Wire = std::pair<int,int>;  // id1,id2
+    using Port = std::pair<Coordinate2, std::string>;  // position, name
+    static const Wire INVALID_WIRE;
     std::string name;
     Schematic() : name{"default"} {}
     Schematic(std::string name) : name{name} {}
 
     Estd::Vec<Wire> get_all_wires() { return _graph.get_all_edges(); }
-    Wire add_wire(Coordinate2 a, Coordinate2 b, bool traverse=true);
     Estd::Vec<std::string> get_all_netnames();
+    Wire add_wire(Coordinate2 a, Coordinate2 b, bool traverse=true);
     std::string get_netname(Wire w);
+    bool set_netname(Wire w);
     Estd::Vec<Wire> select_net(std::string netname);
     Estd::Vec<Wire> select_net(Coordinate2 p);
     Wire select_wire(Coordinate2 p);
+    Estd::Vec<Wire> select_wires(Coordinate2 p);
     bool remove_wire(Wire w, bool traverse=true);
-    int add_port_node(Coordinate2 p);
+    int add_port_node(Coordinate2 p,std::string port_name);
+    int add_port_node(Port port);
     int select_port_node(Coordinate2 p);
+    int select_port_node(std::string port_name);
     bool remove_port_node(int pid);
+    bool remove_port_node(std::string port_name);
+    void update_nets();
+
     void print();
 
-    void update_nets(int vhint1=-1,int vhint2=-1);
-
 private:
-    Estd::Vec<Wire> _wires;  // edges in current schematic
     VertexGraph _graph;
     std::map<std::string,Estd::Vec<Wire>> _nets;  // map of netname -> wires
     Estd::Vec<Estd::Vec<int>> _vtrees;      // spanning trees of vertices
     Estd::Vec<Estd::Vec<Wire>> _etrees;
     void _update_trees();                  // reprocess spanning trees
+    WireType _degenerate(Coordinate2 a,Coordinate2 b,Wire& deg);
+
     IdPool _idpool;
 };
 
