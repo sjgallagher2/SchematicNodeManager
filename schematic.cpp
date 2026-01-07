@@ -24,6 +24,41 @@ using Wire = std::pair<int,int>;
 const Wire Schematic::INVALID_WIRE{-1,-1};
 // /static
 
+template <typename T>
+void print_Vec(const string&& name, const Estd::Vec<T>& v)
+{
+    if(v.size() == 0) cout << name << " = []\n";
+    else
+    {
+        cout << name << " = [";
+        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
+        cout << v.back() << "]\n";
+    }
+}
+
+template <typename T>
+void print_Vec(const string& name, const Estd::Vec<T>& v)
+{
+    if(v.size() == 0) cout << name << " = []\n";
+    else
+    {
+        cout << name << " = [";
+        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
+        cout << v.back() << "]\n";
+    }
+}
+void print_Wire(const Wire& w, const Coordinate2& a, const Coordinate2& b)
+{
+    cout << "\t{"<<w.first<<", "<<w.second<<"}\t = \t";
+    cout << "{("<<a.x<<","<<a.y<<"), ("<<b.x<<","<<b.y<<")}\n";
+}
+void print_Wire(const Wire& w)
+{
+    cout << "\t{"<<w.first<<", "<<w.second<<"}\n";
+}
+
+
+
 Vec<string> Schematic::get_all_netnames()
 {
     Vec<string> names;
@@ -182,35 +217,82 @@ bool netname_is_int(const string& name)
 }
 
 /* Update net names.
- * Reprocess the whole schematic, no heuristics for new net names. Calls _update_trees().
+ * Reprocess the whole schematic, basic heuristics for new net names. Calls _update_trees().
  * Call this when changes to the schematic are made. Methods like add_wire() and
- * remove_wire() will call it automatically if traverse==true.
+ * remove_wire() will call it automatically if traverse==true (default).
  */
 void Schematic::update_nets()
 {
+    // Note: This is a big function, but breaking it up would be uglier imho.
+
     // Go through current spanning trees, compare with spanning trees in _nets
-    // Remove _nets keys that don't correspond to existing spanning trees
+    // Only add _nets keys that correspond to existing spanning trees in _etrees.
     // If any spanning tree is not a value in _nets, give it a new name, checking
     // for ports
     multimap<string,Vec<Wire>> nets_new;
     std::set<int> ok_trees;
     std::set<string> ok_nets;
     _update_trees();
-    for(int treeid=0; treeid < _etrees.size(); treeid++)
+
+    int treeid = -1; // init treeid
+    // For each net (name : etree), search _etrees for it
+    for(auto& net : _nets)
     {
-        for(auto& nm : _nets)
+        // lower_bound returns iter to first elem !< val, so
+        // verify that it actually matches
+        auto itr_lb = std::lower_bound(_etrees.begin(),_etrees.end(),net.second);
+        if(itr_lb != _etrees.end() && *itr_lb == net.second)
         {
-            if(nm.second == _etrees[treeid])
+            // if match, get index of tree
+            treeid = std::distance(_etrees.begin(),itr_lb);
+            // update
+            ok_trees.insert(treeid);
+            nets_new.insert(net);
+            ok_nets.insert(net.first);
+        }
+    }
+
+    // For each net, check if net tree includes any tree in _etrees
+    // Only search through trees that are not in ok_trees
+    for(auto& net : _nets)
+    {
+        if(ok_nets.find(net.first) == ok_nets.end())
+        {
+            for(treeid=0; treeid < _etrees.size(); treeid++)
             {
-                nets_new.insert(nm);
-                ok_trees.insert(treeid);
-                ok_nets.insert(nm.first);
-                break;
+                if(ok_trees.find(treeid) == ok_trees.end())
+                {
+                    // tree and net have not been placed yet
+                    if(std::includes(net.second.begin(),net.second.end(),
+                                      _etrees[treeid].begin(),_etrees[treeid].end()))
+                    {
+                        // _etrees[treeid] is a subset of net.second
+                        // Wire has been removed, tree may have been split
+                        // Since this net is not in ok_nets, this is the first
+                        // subset of this net to appear. Add it with new subset.
+                        ok_trees.insert(treeid);
+                        net.second = _etrees[treeid];
+                        nets_new.insert(net);
+                        ok_nets.insert(net.first);
+                    }
+                    else if(std::includes(_etrees[treeid].begin(),_etrees[treeid].end(),
+                            net.second.begin(),net.second.end()))
+                    {
+                        // net.second is a subset of _etrees[treeid]
+                        // Wire has been added, two (or more?) trees may have been connected
+                        // We can add this safely, after updating
+                        ok_trees.insert(treeid);
+                        net.second = _etrees[treeid];
+                        nets_new.insert(net);
+                        ok_nets.insert(net.first);
+                    }
+                }
             }
         }
     }
-    // Any nets not in `ok_nets` can be removed (i.e. not added back) and,
-    // if integer, added back to the id pool
+
+    // Any nets not in `ok_nets` are not added back;
+    // if integer, names are added back to the id pool
     for(auto& pair : _nets)
     {
         if(ok_nets.find(pair.first) == ok_nets.end())
@@ -368,35 +450,6 @@ void Schematic::remove_port_nodes(std::string port_name, bool traverse)
     if(traverse) {update_nets();}
 }
 
-template <typename T>
-void print_Vec(const string&& name, const Estd::Vec<T>& v)
-{
-    if(v.size() == 0) cout << name << " = []\n";
-    else
-    {
-        cout << name << " = [";
-        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
-        cout << v.back() << "]\n";
-    }
-}
-
-template <typename T>
-void print_Vec(const string& name, const Estd::Vec<T>& v)
-{
-    if(v.size() == 0) cout << name << " = []\n";
-    else
-    {
-        cout << name << " = [";
-        for(int i=0; i< v.size()-1; i++) cout << v[i] << ", ";
-        cout << v.back() << "]\n";
-    }
-}
-void print_Wire(const Wire& w, const Coordinate2& a, const Coordinate2& b)
-{
-    cout << "\t{"<<w.first<<", "<<w.second<<"}\t = \t";
-    cout << "{("<<a.x<<","<<a.y<<"), ("<<b.x<<","<<b.y<<")}\n";
-}
-
 void Schematic::print()
 {
     update_nets();
@@ -419,20 +472,22 @@ void Schematic::print()
 
 /*
  * Update the spanning trees of vertices.
- * This method clears _vtrees and repopulates it. The _nets data structure
- * is NOT UPDATED by this method. It is called by update_nets().
+ * This method clears _vtrees and _etrees and repopulates them. The _nets data
+ * structure is NOT UPDATED by this method. It is called by update_nets().
+ * Each edge tree in _etrees is sorted, and then _etrees itself is sorted by first
+ * element.
  */
 void Schematic::_update_trees()
 {
-    _vtrees = _graph.get_spanning_trees(true);
-
     _etrees.clear();
-    for(auto& tree : _vtrees)
+    for(auto& tree : _graph.get_spanning_trees(true))
     {
         auto sub_adj = _graph.get_sub_adjacency_lists(tree);
         SimpleStaticGraph subgraph(tree,sub_adj);
         _etrees.push_back(subgraph.get_all_edges());
+        std::sort(_etrees.back().begin(),_etrees.back().end());  // sort lexicographically
     }
+    std::sort(_etrees.begin(),_etrees.end());
 }
 
 

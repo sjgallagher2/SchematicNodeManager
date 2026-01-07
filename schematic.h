@@ -64,8 +64,7 @@ public:
 private:
     VertexGraph _graph;
     std::multimap<std::string,Estd::Vec<Wire>> _nets;  // map of netname -> wires
-    Estd::Vec<Estd::Vec<int>> _vtrees;      // spanning trees of vertices
-    Estd::Vec<Estd::Vec<Wire>> _etrees;
+    Estd::Vec<Estd::Vec<Wire>> _etrees;     // edge trees, based on spanning trees but with all connections
     Estd::Vec<Port> _ports;                 // ports (name and position)
     void _update_trees();                   // reprocess spanning trees
     WireType _degenerate(Coordinate2 a,Coordinate2 b,Wire& deg);

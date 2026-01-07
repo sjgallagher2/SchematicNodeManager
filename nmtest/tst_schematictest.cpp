@@ -86,7 +86,7 @@ TEST_F(SchematicTestFixture, SchematicNameDefaultAndSetInitialization)
 
 TEST_F(SchematicTestFixture, SchematicAddWireReturnsValidWire)
 {
-    // For for the first wire added, the wire is guaranteed to stay the same after adding
+    // For any isolated wire, the wire is guaranteed to stay the same after adding
     Wire w1 = sch.add_wire(Coordinate2(0,0),Coordinate2(0,5));
     ASSERT_NE(w1,Schematic::INVALID_WIRE);
     ASSERT_NO_THROW(sch.get_netname(w1));  // if w1 does not exist, this will throw
@@ -184,7 +184,40 @@ TEST_F(SchematicTestFixture, SchematicAddWireReturnsValidWire)
 
 TEST_F(SchematicTestFixtureWithWires, SchematicTestRemoveWireWorks)
 {
-    //
+    using std::cout;
+    using std::endl;
+    using Estd::Vec;
+    using std::string;
+    // Verify default nets, number of wires
+    EXPECT_THAT(sch.get_all_netnames(),ElementsAre("0","1","2","3","4","5","6"));
+    EXPECT_EQ(sch.get_all_wires().size(),35);
+
+    // Remove w0, net0 still has w1 in it
+    Wire w = sch.select_wire({16,9}); // select w0
+    EXPECT_NE(w,Schematic::INVALID_WIRE);  // properly selected
+    sch.remove_wire(w);
+    EXPECT_THAT(sch.get_all_netnames(),ElementsAre("0","1","2","3","4","5","6"));
+    EXPECT_EQ(sch.get_all_wires().size(),34);
+
+    // Remove w1, net goes away
+    w = sch.select_wire({20,8}); // select w1
+    string nn1 = sch.get_netname(w);  // netname to be removed
+    EXPECT_NE(w,Schematic::INVALID_WIRE);  // properly selected
+    sch.remove_wire(w);
+    Vec<string> expec = {"0","1","2","3","4","5","6"};
+    expec.erase(Estd::find(expec,nn1));
+    EXPECT_EQ(sch.get_all_netnames(),expec);
+    EXPECT_EQ(sch.get_all_wires().size(),33);
+
+    // Add a wire to other net, shouldn't change anything
+    sch.add_wire({77,14},{80,14});
+    EXPECT_EQ(sch.get_all_netnames(),expec);
+    EXPECT_EQ(sch.get_all_wires().size(),34);
+
+    // Add a wire in isolation, should get prev net back, back to start
+    sch.add_wire({0,0},{10,0});
+    EXPECT_THAT(sch.get_all_netnames(),ElementsAre("0","1","2","3","4","5","6"));
+    EXPECT_EQ(sch.get_all_wires().size(),35);
 }
 
 TEST_F(SchematicTestFixtureWithWires, SchematicTestAddPortRenamesNets)
