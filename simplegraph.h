@@ -83,7 +83,7 @@ template<typename NodeT>
 class AbstractGraph
 {
 public:
-    static_assert(std::is_base_of<GraphNode,NodeT>::value,"NodeT must derive from Graphnode");
+    static_assert(std::is_base_of<GraphNode,NodeT>::value,"NodeT must derive from GraphNode");
     using GraphNodeP = std::unique_ptr<NodeT>;
 
     AbstractGraph() {}
@@ -605,32 +605,34 @@ public:
         }
 
         // If no collinear points in graph, simple connection
-        if(collinear_vtxs.empty()) _connect_nodes(id1,id2,false);
-
-        // Otherwise connect all collinear points in order of distance
-        // Small optimization: using plain (x^2 + y^2) instead of sqrt(x^2+y^2) to sort
-        // Start by adding the input points to the list
-        collinear_vtxs.push_back(_get_node(id1));
-        collinear_coords.push_back(p1);
-        collinear_vtxs.push_back(_get_node(id2));
-        collinear_coords.push_back(p2);
-        // Now calculate "distances" from p1
-        Estd::Vec<double> dists;
-        for(auto& c : collinear_coords)
+        if(collinear_vtxs.empty()){ _connect_nodes(id1,id2,false);}
+        else
         {
-            dists.push_back(std::pow(p1.x-c.x,2)+std::pow(p1.y-c.y,2));
+            // Otherwise connect all collinear points in order of distance
+            // Small optimization: using plain (x^2 + y^2) instead of sqrt(x^2+y^2) to sort
+            // Start by adding the input points to the list
+            collinear_vtxs.push_back(_get_node(id1));
+            collinear_coords.push_back(p1);
+            collinear_vtxs.push_back(_get_node(id2));
+            collinear_coords.push_back(p2);
+            // Now calculate "distances" from p1
+            Estd::Vec<double> dists;
+            for(auto& c : collinear_coords)
+            {
+                dists.push_back(std::pow(p1.x-c.x,2)+std::pow(p1.y-c.y,2));
+            }
+            // Get indices of sorted distances
+            std::vector<size_t> sorted_idxs = Estd::argsort(dists);
+            // Call _connect_nodes() on each adjacent pair of indices
+            for(int i=0; i<sorted_idxs.size()-1; i++)
+            {
+                int tmp_id1 = collinear_vtxs[sorted_idxs[i]].get_id();
+                int tmp_id2 = collinear_vtxs[sorted_idxs[i+1]].get_id();
+                _connect_nodes(tmp_id1,tmp_id2,false);
+            }
+            // Note that no non-adjacent nodes can be connected, since they're handled
+            // either during add() or during a previous call to connect()
         }
-        // Get indices of sorted distances
-        std::vector<size_t> sorted_idxs = Estd::argsort(dists);
-        // Call _connect_nodes() on each adjacent pair of indices
-        for(int i=0; i<sorted_idxs.size()-1; i++)
-        {
-            int tmp_id1 = collinear_vtxs[sorted_idxs[i]].get_id();
-            int tmp_id2 = collinear_vtxs[sorted_idxs[i+1]].get_id();
-            _connect_nodes(tmp_id1,tmp_id2,false);
-        }
-        // Note that no non-adjacent nodes can be connected, since they're handled
-        // either during add() or during a previous call to connect()
 
         // Finish up
         if(traverse) _traverse_graph();

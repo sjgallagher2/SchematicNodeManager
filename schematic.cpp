@@ -417,12 +417,12 @@ Vec<int> Schematic::select_port_nodes(std::string port_name) const
 void Schematic::remove_port_node(int pid, bool traverse)
 {
     try{
+        string netname = _ports[pid].second;
         // erase port from `_ports`
         _ports.erase(_ports.begin()+pid);
         // remove entries in `_nets`
         // Note: this is aggressive, but update_nets() will rename any that
         // still have this name
-        string netname = _ports[pid].second;
         auto[range_start,range_end] = _nets.equal_range(netname);
         _nets.erase(range_start,range_end);
         if(traverse) {update_nets();}

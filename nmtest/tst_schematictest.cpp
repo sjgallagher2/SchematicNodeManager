@@ -188,6 +188,10 @@ TEST_F(SchematicTestFixtureWithWires, SchematicTestRemoveWireWorks)
     using std::endl;
     using Estd::Vec;
     using std::string;
+
+    // Note: We can assume the names of the first N nets, but we _cannot_ assume
+    // the order those names are assigned, since that's not part of the API.
+
     // Verify default nets, number of wires
     EXPECT_THAT(sch.get_all_netnames(),ElementsAre("0","1","2","3","4","5","6"));
     EXPECT_EQ(sch.get_all_wires().size(),35);
@@ -208,37 +212,95 @@ TEST_F(SchematicTestFixtureWithWires, SchematicTestRemoveWireWorks)
     expec.erase(Estd::find(expec,nn1));
     EXPECT_EQ(sch.get_all_netnames(),expec);
     EXPECT_EQ(sch.get_all_wires().size(),33);
+}
 
-    // Add a wire to other net, shouldn't change anything
+TEST_F(SchematicTestFixtureWithWires, SchematicTestNetRenamingAlgorithm)
+{
+    using std::cout;
+    using std::endl;
+    using Estd::Vec;
+    using std::string;
+
+    Vec<string> expec = {"0","1","2","3","4","5","6"};
+
+    // Add a wire to a net, shouldn't change anything
+    // (net superset detected and old name reused)
     sch.add_wire({77,14},{80,14});
     EXPECT_EQ(sch.get_all_netnames(),expec);
-    EXPECT_EQ(sch.get_all_wires().size(),34);
+    EXPECT_EQ(sch.get_all_wires().size(),36);
 
     // Add a wire in isolation, should get prev net back, back to start
-    sch.add_wire({0,0},{10,0});
-    EXPECT_THAT(sch.get_all_netnames(),ElementsAre("0","1","2","3","4","5","6"));
-    EXPECT_EQ(sch.get_all_wires().size(),35);
+    Wire w2 = sch.add_wire({0,0},{10,0});
+    EXPECT_THAT(sch.get_all_netnames(),ElementsAre("0","1","2","3","4","5","6","7"));
+    EXPECT_EQ(sch.get_all_wires().size(),37);
+
+    // Remove that wire, add net name back to the pool
+    string nn2 = sch.get_netname(w2);
+    sch.remove_wire(w2);
+    expec = {"0","1","2","3","4","5","6","7"};
+    expec.erase(Estd::find(expec,nn2));
+    EXPECT_EQ(sch.get_all_netnames(),expec);
+
+    // Delete w12 {(25,29), (39,29)},  should split net, retain one net name, pull other from pool again
+    Wire w12 = sch.select_wire({30,29});
+    string nn12 = sch.get_netname(w12);
+    sch.remove_wire(w12);
+    EXPECT_THAT(sch.get_all_netnames(),ElementsAre("0","1","2","3","4","5","6","7"));
+    // Wire 16 is on one of the possibly-renamed nets
+    Wire w16 = sch.select_wire({42,29});
+    string nn16 = sch.get_netname(w16);
+    // Wire 8 is on the other
+    Wire w8 = sch.select_wire({20,26});
+    string nn8 = sch.get_netname(w8);
+    EXPECT_THAT(nn12,AnyOf(nn16,nn8));  // At least one of them should have retained the old net name
+
 }
 
-TEST_F(SchematicTestFixtureWithWires, SchematicTestAddPortRenamesNets)
+TEST_F(SchematicTestFixtureWithWires, SchematicTestAddingAndRemovingPortsIndivid)
 {
-    //
-}
-
-TEST_F(SchematicTestFixtureWithWires, SchematicTestAddingAndRemovingPorts)
-{
-    sch.print();
-    std::cout << "******************\n";
-    int port1 = sch.add_port_node({{16,8},"Gnd"});
-    sch.print();
-    std::cout << "******************\n";
-    int port2 = sch.add_port_node({{60,30},"Gnd"});
-    sch.print();
-    std::cout << "******************\n";
+    EXPECT_THAT(sch.get_all_netnames(),Not(Contains("gnd1")));
+    EXPECT_THAT(sch.get_all_netnames(),Not(Contains("gnd2")));
+    int port1 = sch.add_port_node({{16,8},"Gnd1"});
+    EXPECT_THAT(sch.get_all_netnames(),Contains("gnd1"));
+    EXPECT_THAT(sch.get_all_netnames(),Not(Contains("gnd2")));
+    int port2 = sch.add_port_node({{60,30},"Gnd2"});
+    EXPECT_THAT(sch.get_all_netnames(),Contains("gnd1"));
+    EXPECT_THAT(sch.get_all_netnames(),Contains("gnd2"));
     sch.remove_port_node(port1);
-    sch.print();
-    std::cout << "******************\n";
+    EXPECT_THAT(sch.get_all_netnames(),Not(Contains("gnd1")));
+    EXPECT_THAT(sch.get_all_netnames(),Contains("gnd2"));
+    // Note: port ids invalidated
+    port2 = sch.select_port_node({60,30});
+    ASSERT_NE(port2,-1);
+    sch.remove_port_node(port2);
+    EXPECT_THAT(sch.get_all_netnames(),Not(Contains("gnd1")));
+    EXPECT_THAT(sch.get_all_netnames(),Not(Contains("gnd2")));
 }
 
+TEST_F(SchematicTestFixtureWithWires, SchematicTestAddingAndRemovingPortsGrouped)
+{
+    using Estd::Vec;
+    EXPECT_THAT(sch.get_all_netnames(),Not(Contains("gnd")));
+    int port1 = sch.add_port_node({{16,8},"Gnd"});
+    EXPECT_THAT(sch.get_all_netnames(),Contains("gnd"));
+    int port2 = sch.add_port_node({{60,30},"Gnd"});
+    EXPECT_THAT(sch.get_all_netnames(),Contains("gnd"));
+    sch.remove_port_node(port1);
+    EXPECT_THAT(sch.get_all_netnames(),Contains("gnd"));  // still there
+    port1 = sch.add_port_node({{16,8},"Gnd"});
+    // Note: port ids invalidated
+    port2 = sch.select_port_node({60,30});
+    ASSERT_NE(port2,-1);
+    // Select all ports with name "gnd" and remove them
+    Vec<int> gnd_nodes = sch.select_port_nodes("gnd");
+    int i = -1;
+    while(!gnd_nodes.empty()) {
+        // This avoids id invalidation
+        i = gnd_nodes[0];
+        sch.remove_port_node(i);
+        gnd_nodes = sch.select_port_nodes("gnd");
+    }
+    EXPECT_THAT(sch.get_all_netnames(),Not(Contains("gnd")));
+}
 
 

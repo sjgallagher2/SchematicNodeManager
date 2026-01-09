@@ -20,7 +20,7 @@ enum class WireType
 /* Schematic class for managing wires and ports on a schematic.
  *
  * Usage: A Schematic has a name, a collection of Wire objects, and a collection of
- * Port objects. Add wires with `add_wire()`. If traverse==true, this call automatically
+ * Port objects. Add wires with `add_wire()`. If traverse==true (default), this automatically
  * runs `update_nets()`. Wires are identified by the internal vertex id's of their
  * endpoints. Because adding or removing a wire can change the graph interconnections,
  * a Wire should be considered _invalid_ after any changes to the schematic.
